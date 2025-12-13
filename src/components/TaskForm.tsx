@@ -16,6 +16,7 @@ export interface TaskData {
   priority: 'low' | 'medium' | 'high';
   startDate: Date;
   endDate: Date;
+  //deadline: Date;
   assignee: string;
   tags: string[];
 }
@@ -28,8 +29,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
     priority: 'medium',
     startDate: initialDate || new Date(),
     endDate: initialDate 
-      ? new Date(initialDate.getTime() + 60 * 60 * 1000)
-      : new Date(Date.now() + 60 * 60 * 1000),
+      ? new Date(initialDate.getTime() + 24 * 60 * 60 * 1000)
+      : new Date(Date.now() + 24 * 60 * 60 * 1000),
+    // deadline: initialDate 
+    // ? new Date(initialDate.getTime() + 24 * 60 * 60 * 1000)
+    // : new Date(Date.now() + 24 * 60 * 60 * 1000),
     assignee: '',
     tags: [],
   });
@@ -146,28 +150,94 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
           </div>
 
           <div style={rowStyle}>
-            {/* Дата начала */}
-            <div style={{ ...inputGroupStyle, flex: 1 }}>
-              <label style={labelStyle}>Дата начала</label>
-              <input
-                type="datetime-local"
-                value={moment(formData.startDate).format('YYYY-MM-DDTHH:mm')}
-                onChange={(e) => setFormData({ ...formData, startDate: new Date(e.target.value) })}
-                style={inputStyle}
-              />
-            </div>
+  {/* Дата и время начала */}
+  <div style={{ ...inputGroupStyle, flex: 1 }}>
+    <label style={labelStyle}>Дата и время начала *</label>
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <input
+        type="date"
+        value={moment(formData.startDate).format('YYYY-MM-DD')}
+        onChange={(e) => {
+          const dateStr = e.target.value;
+          if (!dateStr) return;
+          
+          const newDate = new Date(formData.startDate);
+          const [year, month, day] = dateStr.split('-').map(Number);
+          newDate.setFullYear(year, month - 1, day);
+          setFormData({ ...formData, startDate: newDate });
+        }}
+        style={{ ...inputStyle, flex: 2 }}
+        required
+      />
+      <input
+        type="time"
+        value={moment(formData.startDate).format('HH:mm')}
+        onChange={(e) => {
+          const timeStr = e.target.value;
+          if (!timeStr) return;
+          
+          const newDate = new Date(formData.startDate);
+          const [hours, minutes] = timeStr.split(':').map(Number);
+          newDate.setHours(hours, minutes);
+          setFormData({ ...formData, startDate: newDate });
+        }}
+        style={{ ...inputStyle, flex: 1 }}
+        required
+        step="300" // 5 минут интервал
+      />
+    </div>
+  </div>
 
-            {/* Дата окончания */}
-            <div style={{ ...inputGroupStyle, flex: 1 }}>
-              <label style={labelStyle}>Дата окончания</label>
-              <input
-                type="datetime-local"
-                value={moment(formData.endDate).format('YYYY-MM-DDTHH:mm')}
-                onChange={(e) => setFormData({ ...formData, endDate: new Date(e.target.value) })}
-                style={inputStyle}
-              />
-            </div>
-          </div>
+      {/* Дата и время окончания */}
+      <div style={{ ...inputGroupStyle, flex: 1 }}>
+        <label style={labelStyle}>Дата и время окончания *</label>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="date"
+            value={moment(formData.endDate).format('YYYY-MM-DD')}
+            onChange={(e) => {
+              const dateStr = e.target.value;
+              if (!dateStr) return;
+              
+              const newDate = new Date(formData.endDate);
+              const [year, month, day] = dateStr.split('-').map(Number);
+              newDate.setFullYear(year, month - 1, day);
+              setFormData({ ...formData, endDate: newDate });
+            }}
+            style={{ ...inputStyle, flex: 2 }}
+            required
+          />
+          <input
+            type="time"
+            value={moment(formData.endDate).format('HH:mm')}
+            onChange={(e) => {
+              const timeStr = e.target.value;
+              if (!timeStr) return;
+              
+              const newDate = new Date(formData.endDate);
+              const [hours, minutes] = timeStr.split(':').map(Number);
+              newDate.setHours(hours, minutes);
+              setFormData({ ...formData, endDate: newDate });
+            }}
+            style={{ ...inputStyle, flex: 1 }}
+            required
+            step="300"
+          />
+        </div>
+      </div>
+    </div>
+
+          {/* Дедлайн */}
+        {/* <div style={{ ...inputGroupStyle, flex: 1 }}>
+          <label style={labelStyle}>Дедлайн *</label>
+          <input
+            type="datetime-local"
+            value={moment(formData.deadline).format('YYYY-MM-DDTHH:mm')}
+            onChange={(e) => setFormData({ ...formData, deadline: new Date(e.target.value) })}
+            style={inputStyle}
+            required
+          />
+        </div> */}
 
           {/* Исполнитель */}
           <div style={inputGroupStyle}>

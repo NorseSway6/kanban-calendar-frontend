@@ -1,38 +1,84 @@
-.App {
-  text-align: center;
+/* Стили для календаря */
+.rbc-calendar {
+  font-family: inherit;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Ограничение текста в событиях */
+.rbc-event {
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  padding: 2px 5px !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+  border-radius: 3px !important;
+  border-left: 4px solid rgba(0, 0, 0, 0.2) !important;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* Для событий с длинным текстом */
+.rbc-event-content {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+/* Ячейки месяца */
+.rbc-month-view {
+  border: 1px solid #e6e6e6 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
 }
 
-.App-link {
-  color: #61dafb;
+.rbc-month-row {
+  min-height: 100px !important;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.rbc-date-cell {
+  padding: 8px !important;
+  text-align: center !important;
+}
+
+/* Заголовки дней */
+.rbc-header {
+  padding: 10px !important;
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #e6e6e6 !important;
+  font-weight: 600 !important;
+}
+
+/* Вид недели/дня */
+.rbc-time-view {
+  border: 1px solid #e6e6e6 !important;
+  border-radius: 8px !important;
+}
+
+.rbc-time-header {
+  background-color: #f8f9fa !important;
+}
+
+.rbc-time-content {
+  border-top: 1px solid #e6e6e6 !important;
+}
+
+/* Цвета для разных статусов */
+.rbc-event[data-status="todo"] {
+  background-color: #6c757d !important; /* Серый для todo */
+  border-left-color: #495057 !important;
+}
+
+.rbc-event[data-status="in_progress"] {
+  background-color: #ffc107 !important; /* Желтый для in_progress */
+  border-left-color: #d39e00 !important;
+}
+
+.rbc-event[data-status="done"] {
+  background-color: #28a745 !important; /* Зеленый для done */
+  border-left-color: #1e7e34 !important;
+}
+
+/* При наведении */
+.rbc-event:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
 }

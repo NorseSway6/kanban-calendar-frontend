@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -6,6 +6,7 @@ import TaskForm, { TaskData } from './components/TaskForm';
 import './App.css';
 import TaskDetails from './components/TaskDetails';
 
+const API_BASE_URL = 'http://localhost:8080/api';
 
 // Кастомный Toolbar
 const CustomToolbar: React.FC<any> = ({ label, onNavigate }) => {
@@ -57,85 +58,143 @@ const buttonStyle = {
 // Основной компонент App
 function App() {
   // ВАЖНО: добавьте setEvents здесь!
-  const [events, setEvents] = useState<any[]>([
-    {
-      id: 1,
-      title: 'Совещание по проекту',
-      start: new Date(2024, 5, 15, 10, 0),
-      end: new Date(2024, 5, 15, 11, 30),
-    },
-    {
-      id: 2,
-      title: 'Планирование спринта',
-      start: new Date(2024, 5, 16, 14, 0),
-      end: new Date(2024, 5, 16, 16, 0),
-    },
-  ]);
-  
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('month');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showTaskDetails, setShowTaskDetails] = useState(false);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [currentView, currentDate]);
+
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        
+        // Используйте эндпоинт календаря
+        const response = await fetch(`${API_BASE_URL}/calendar/events`);
+        
+        if (!response.ok) throw new Error('Ошибка загрузки данных');
+        
+        const data = await response.json();
+        
+        console.log('События календаря:', data.events);
+        
+        const formattedEvents = data.events.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          start: new Date(event.start),
+          end: new Date(event.end),
+          allDay: false,
+          status: event.status,
+          description: event.description,
+          color: event.color || '#3174ad',
+          resource: event
+        }));
+        
+        setEvents(formattedEvents);
+      } catch (error) {
+        console.error('Ошибка загрузки событий:', error);
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+      
   
   moment.locale('ru');
   const localizer = momentLocalizer(moment);
   
   // Обработчик создания задачи
-  const handleTaskSubmit = (taskData: TaskData) => {
-    // Генерируем уникальный ID
-    const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1;
-    
-    // Создаем новое событие
-    const newEvent = {
-      id: newId,
-      title: taskData.title,
-      start: taskData.startDate,
-      end: taskData.endDate,
-      status: taskData.status,
-      description: taskData.description,
-      resource: {
-        ...taskData,
-        id: newId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-    };
-    
-    // Используем setEvents для обновления состояния
-    setEvents([...events, newEvent]);
-    
-    console.log('Задача создана:', newEvent);
-  };
+  const handleTaskSubmit = async (taskData: TaskData) => {
+    try {
+      const taskRequest = {
+        title: taskData.title,
+        description: taskData.description,
+        status: taskData.status || 'todo',
+        start_date: taskData.startDate.toISOString(),
+        end_date: taskData.endDate.toISOString(),
+        priority: taskData.priority || 'medium',
+        assignee: taskData.assignee || ''
+      };
 
-  const handleDeleteTask = (taskId: number) => {
-    if (window.confirm('Вы уверены, что хотите удалить эту задачу?')) {
-      setEvents(events.filter(event => event.id !== taskId));
-      setShowTaskDetails(false);
+      const response = await fetch(`${API_BASE_URL}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskRequest),
+      });
+
+      if (!response.ok) throw new Error('Ошибка создания задачи');
+
+      // ⭐ ВАЖНО: перезагружаем события после создания
+      await fetchEvents();
+      
+      setShowTaskForm(false);
+      setSelectedDate(undefined);
+      
+      console.log('Задача успешно создана и отображена');
+    } catch (error) {
+      console.error('Ошибка:', error);
+      alert('Не удалось создать задачу');
     }
   };
 
-  const handleUpdateTask = (taskId: number, updatedData: TaskData) => {
-    setEvents(events.map(event => {
-        if (event.id === taskId) {
-          return {
-            ...event,
-            title: updatedData.title,
-            description: updatedData.description,
-            status: updatedData.status,
-            start: updatedData.startDate,
-            end: updatedData.endDate,
-            resource: {
-              ...event.resource,
-              ...updatedData,
-              updated_at: new Date().toISOString(),
-            }
-          };
-        }
-        return event;
-      }));
-    
+
+  const handleDeleteTask = async (taskId: number) => {
+    if (!window.confirm('Вы уверены, что хотите удалить эту задачу?')) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Ошибка удаления задачи');
+
+      await fetchEvents(); // Перезагружаем события
+      setShowTaskDetails(false);
+      
+      console.log('Задача успешно удалена');
+    } catch (error) {
+      console.error('Ошибка:', error);
+      alert('Не удалось удалить задачу');
+    }
+  };
+
+  const handleUpdateTask = async (taskId: number, updatedData: TaskData) => {
+    try {
+      const taskRequest = {
+        title: updatedData.title,
+        description: updatedData.description,
+        status: updatedData.status || 'todo',
+        start_date: updatedData.startDate.toISOString(),
+        end_date: updatedData.endDate.toISOString(),
+        priority: updatedData.priority || 'medium',
+        assignee: updatedData.assignee || ''
+      };
+
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskRequest),
+      });
+
+      if (!response.ok) throw new Error('Ошибка обновления задачи');
+
+      await fetchEvents(); // Перезагружаем события
+      
+      console.log('Задача успешно обновлена');
+    } catch (error) {
+      console.error('Ошибка:', error);
+      alert('Не удалось обновить задачу');
+    }
   };
 
   
@@ -270,6 +329,12 @@ function App() {
               setShowTaskDetails(true);
             }}
             selectable={false}
+            eventPropGetter={(event) => ({
+              style: {
+                backgroundColor: event.color || '#3174ad',
+              },
+              'data-status': event.status // Для CSS селекторов
+            })}
             components={{
               toolbar: (props) => (
                 <CustomToolbar
