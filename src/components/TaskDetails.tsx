@@ -25,6 +25,18 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
   
   if (!isOpen || !task) return null;
   
+  const calculateDuration = (start: Date, end: Date): string => {
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 0) {
+      return `${diffDays} дней`;
+    } else {
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      return `${diffHours} часов`;
+    }
+  };
+
   // Функция для получения цвета статуса
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -63,7 +75,6 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
       status: (task.status || task.resource?.status || 'todo') as 'todo' | 'in_progress' | 'done',
       priority: (task.resource?.priority || 'medium') as 'low' | 'medium' | 'high',
       startDate: task.start ? new Date(task.start) : new Date(),
-      endDate: task.end ? new Date(task.end) : new Date(),
       assignee: task.resource?.assignee || '',
       tags: task.resource?.tags || [],
     };
@@ -136,18 +147,53 @@ const TaskDetails: React.FC<TaskDetailsProps> = ({
                   {moment(task.start).format('DD.MM.YYYY HH:mm')}
                 </div>
               </div>
-              <div>
-                <div style={dateLabelStyle}>Окончание:</div>
-                <div style={dateValueStyle}>
-                  {moment(task.end).format('DD.MM.YYYY HH:mm')}
+              
+              {/* Проверяем наличие явного дедлайна, а не просто task.end */}
+              {task.resource?.end_date ? (
+                <>
+                  <div>
+                    <div style={dateLabelStyle}>Окончание (дедлайн):</div>
+                    <div style={dateValueStyle}>
+                      {moment(task.resource.end_date).format('DD.MM.YYYY HH:mm')}
+                    </div>
+                  </div>
+                  
+                  {/* Блок "Длительность" показываем только если есть дедлайн */}
+                  <div style={{ 
+                    marginTop: '15px',
+                    padding: '10px',
+                    backgroundColor: '#e9ecef',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}>
+                    <div style={dateLabelStyle}>Длительность:</div>
+                    <div style={dateValueStyle}>
+                      {calculateDuration(
+                        new Date(task.start), 
+                        new Date(task.resource.end_date)
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ 
+                  marginTop: '10px',
+                  padding: '12px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px',
+                  borderLeft: '4px solid #6c757d'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', color: '#6c757d' }}>
+                    <span style={{ marginRight: '8px' }}>📅</span>
+                    <div>
+                      <div style={{ fontWeight: '500', fontSize: '14px' }}>Без дедлайна</div>
+                      <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                        Задача не имеет установленного срока выполнения
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div style={dateLabelStyle}>Длительность:</div>
-                <div style={dateValueStyle}>
-                  {moment.duration(moment(task.end).diff(moment(task.start))).humanize()}
-                </div>
-              </div>
+              )}
             </div>
           </div>
           

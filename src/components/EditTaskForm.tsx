@@ -15,7 +15,7 @@ export interface TaskData {
   status: 'todo' | 'in_progress' | 'done';
   priority: 'low' | 'medium' | 'high';
   startDate: Date;
-  endDate: Date;
+  endDate?: Date;
   assignee: string;
   tags: string[];
 }
@@ -170,42 +170,25 @@ const EditTaskForm: React.FC<EditTaskFormProps> = ({
               </div>
             
                   {/* Дата и время окончания */}
-                  <div style={{ ...inputGroupStyle, flex: 1 }}>
-                    <label style={labelStyle}>Дата и время окончания *</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type="date"
-                        value={moment(formData.endDate).format('YYYY-MM-DD')}
-                        onChange={(e) => {
-                          const dateStr = e.target.value;
-                          if (!dateStr) return;
-                          
-                          const newDate = new Date(formData.endDate);
-                          const [year, month, day] = dateStr.split('-').map(Number);
-                          newDate.setFullYear(year, month - 1, day);
-                          setFormData({ ...formData, endDate: newDate });
-                        }}
-                        style={{ ...inputStyle, flex: 2 }}
-                        required
-                      />
-                      <input
-                        type="time"
-                        value={moment(formData.endDate).format('HH:mm')}
-                        onChange={(e) => {
-                          const timeStr = e.target.value;
-                          if (!timeStr) return;
-                          
-                          const newDate = new Date(formData.endDate);
-                          const [hours, minutes] = timeStr.split(':').map(Number);
-                          newDate.setHours(hours, minutes);
-                          setFormData({ ...formData, endDate: newDate });
-                        }}
-                        style={{ ...inputStyle, flex: 1 }}
-                        required
-                        step="300"
-                      />
-                    </div>
-                  </div>
+                        <div style={{ ...inputGroupStyle, flex: 1 }}>
+                          <label style={labelStyle}>Дата окончания (дедлайн)</label>
+                          <input
+                            type="datetime-local"
+                            value={formData.endDate ? moment(formData.endDate).format('YYYY-MM-DDTHH:mm') : ''}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setFormData({ 
+                                ...formData, 
+                                endDate: value ? new Date(value) : undefined
+                              });
+                            }}
+                            style={inputStyle}
+                            placeholder="Необязательно"
+                          />
+                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                            Если установить, задача будет иметь дедлайн
+                          </div>
+                        </div>
                 </div>
 
           {/* Исполнитель */}

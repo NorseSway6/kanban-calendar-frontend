@@ -74,27 +74,54 @@ function App() {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-        
-        // Используйте эндпоинт календаря
-        const response = await fetch(`${API_BASE_URL}/calendar/events`);
+
+        const response = await fetch(`${API_BASE_URL}/tasks`);
         
         if (!response.ok) throw new Error('Ошибка загрузки данных');
         
         const data = await response.json();
         
-        console.log('События календаря:', data.events);
+        console.log('Задачи с сервера:', data.tasks);
         
-        const formattedEvents = data.events.map((event: any) => ({
-          id: event.id,
-          title: event.title,
-          start: new Date(event.start),
-          end: new Date(event.end),
-          allDay: false,
-          status: event.status,
-          description: event.description,
-          color: event.color || '#3174ad',
-          resource: event
-        }));
+        // Преобразуем задачи в события
+        const formattedEvents = data.tasks.map((task: any) => {
+          // Используем start_date для отображения
+          const startDate = new Date(task.start_date);
+          
+          // Если есть end_date (дедлайн) - показываем интервал
+          // Если нет - показываем как точечное событие
+          const hasDeadline = !!task.end_date;
+          const endDate = hasDeadline ? new Date(task.end_date) : null;
+          
+          // Определяем, как показывать событие
+          let displayEnd: Date;
+          let allDay = false;
+          
+          if (hasDeadline && endDate) {
+            // Проверяем, многодневная ли задача
+            const isMultiDay = endDate.getDate() !== startDate.getDate() || 
+                              endDate.getMonth() !== startDate.getMonth() ||
+                              endDate.getFullYear() !== startDate.getFullYear();
+            
+            displayEnd = endDate;
+            allDay = isMultiDay;
+          } else {
+            // Без дедлайна - показываем как 1-часовое событие
+            displayEnd = new Date(startDate.getTime() + 60 * 60 * 1000);
+          }
+          
+          return {
+            id: task.id,
+            title: task.title,
+            start: startDate,
+            end: displayEnd,
+            allDay: allDay,
+            status: task.status,
+            description: task.description,
+            color: hasDeadline ? '#dc3545' : '#3174ad', // Красный для задач с дедлайном
+            resource: task
+          };
+        });
         
         setEvents(formattedEvents);
       } catch (error) {
@@ -112,15 +139,19 @@ function App() {
   // Обработчик создания задачи
   const handleTaskSubmit = async (taskData: TaskData) => {
     try {
-      const taskRequest = {
+      const taskRequest: any = {
         title: taskData.title,
         description: taskData.description,
         status: taskData.status || 'todo',
         start_date: taskData.startDate.toISOString(),
-        end_date: taskData.endDate.toISOString(),
         priority: taskData.priority || 'medium',
         assignee: taskData.assignee || ''
       };
+
+      if (taskData.endDate) {
+        taskRequest.end_date = taskData.endDate.toISOString();
+        taskRequest.deadline = taskData.endDate.toISOString();
+      }
 
       const response = await fetch(`${API_BASE_URL}/tasks`, {
         method: 'POST',
@@ -147,8 +178,6 @@ function App() {
 
 
   const handleDeleteTask = async (taskId: number) => {
-    if (!window.confirm('Вы уверены, что хотите удалить эту задачу?')) return;
-
     try {
       const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'DELETE',
@@ -168,15 +197,19 @@ function App() {
 
   const handleUpdateTask = async (taskId: number, updatedData: TaskData) => {
     try {
-      const taskRequest = {
+      const taskRequest: any = {
         title: updatedData.title,
         description: updatedData.description,
         status: updatedData.status || 'todo',
         start_date: updatedData.startDate.toISOString(),
-        end_date: updatedData.endDate.toISOString(),
         priority: updatedData.priority || 'medium',
         assignee: updatedData.assignee || ''
       };
+
+      if (updatedData.endDate) {
+        taskRequest.end_date = updatedData.endDate.toISOString();
+        taskRequest.deadline = updatedData.endDate.toISOString(); // endDate = deadline
+      }
 
       const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'PUT',
@@ -329,12 +362,29 @@ function App() {
               setShowTaskDetails(true);
             }}
             selectable={false}
-            eventPropGetter={(event) => ({
-              style: {
-                backgroundColor: event.color || '#3174ad',
-              },
-              'data-status': event.status // Для CSS селекторов
-            })}
+            eventPropGetter={(event) => {
+              // Для Agenda представления не применяем цвет фона
+              if (currentView === 'agenda') {
+                return {
+                  style: {
+                    backgroundColor: 'transparent',
+                    color: '#333'
+                  }
+                };
+              }
+              
+              // Для других представлений применяем обычные стили
+              return {
+                style: {
+                  backgroundColor: event.color || '#3174ad',
+                  fontSize: '12px',
+                  padding: '3px 6px',
+                  color: 'white',
+                  borderRadius: '3px',
+                  border: 'none'
+                }
+              };
+            }}
             components={{
               toolbar: (props) => (
                 <CustomToolbar
