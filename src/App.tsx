@@ -7,6 +7,7 @@ import './App.css';
 import TaskDetails from './components/TaskDetails';
 
 const API_BASE_URL = 'http://localhost:8080/api';
+const TELEGRAM_BOT_URL = 'https://web.telegram.org/k/#@my_test_1234567890_bo_bot'; // ЗАМЕНИТЬ НА ПОЛУЧЕННЫЙ chat_id
 
 // Кастомный Toolbar
 const CustomToolbar: React.FC<any> = ({ label, onNavigate }) => {
@@ -230,24 +231,6 @@ function App() {
     }
   };
 
-  
-  // Стиль для кнопок вида
-  const getViewButtonStyle = (viewName: View) => ({
-    display: 'block',
-    width: '100%',
-    padding: '12px 15px',
-    margin: '5px 0',
-    backgroundColor: currentView === viewName ? '#3174ad' : 'transparent',
-    color: currentView === viewName ? '#fff' : '#333',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    textAlign: 'left' as const,
-    fontSize: '14px',
-    fontWeight: currentView === viewName ? '600' : '400',
-    transition: 'all 0.2s',
-  });
-
   return (
     <div style={{ 
       display: 'flex', 
@@ -256,65 +239,82 @@ function App() {
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       {/* Боковая панель */}
-      <div style={{
-        width: '220px',
-        backgroundColor: '#fff',
-        padding: '20px',
-        boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 10,
-      }}>
-        <h2 style={{ 
-          margin: '0 0 25px 0', 
-          fontSize: '18px', 
-          color: '#333',
-          fontWeight: '600'
-        }}>
-          📅 Календарь
-        </h2>
-        
-        <div style={{ marginBottom: '25px' }}>
-          <h3 style={{ fontSize: '14px', color: '#666', margin: '0 0 10px 0' }}>Вид</h3>
-          <button onClick={() => setCurrentView('month')} style={getViewButtonStyle('month')}>
-            📅 Месяц
-          </button>
-          <button onClick={() => setCurrentView('week')} style={getViewButtonStyle('week')}>
-            📆 Неделя
-          </button>
-          <button onClick={() => setCurrentView('day')} style={getViewButtonStyle('day')}>
-            📝 День
-          </button>
-          <button onClick={() => setCurrentView('agenda')} style={getViewButtonStyle('agenda')}>
-            📋 Список
-          </button>
-        </div>
-        
-        <button 
-          onClick={() => {
-            setSelectedDate(new Date());
-            setShowTaskForm(true);
-          }}
-          style={{
-            width: '100%',
-            padding: '12px 15px',
-            backgroundColor: '#28a745',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            marginTop: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>+</span>
-          Новая задача
-        </button>
+      <div className='sidebar'>
+          <div className="sidebar-top">
+            <h2>📅 Календарь</h2>
+            
+            <div style={{ marginBottom: '25px' }}>
+                <button 
+                    onClick={() => {
+                      setSelectedDate(new Date());
+                      setShowTaskForm(true);
+                    }}
+                    className="create-task-button"
+                  >
+                    <span>+</span>
+                    Новая задача
+                </button>
+                <button 
+                  onClick={() => setCurrentView('month')} 
+                  className="view-button"
+                  style={{
+                    backgroundColor: currentView === 'month' ? 'rgba(255, 255, 255, 0.3)' : 'transparent',
+                    color: currentView === 'month' ? 'white' : 'white',
+                    fontWeight: currentView === 'month' ? '600' : '400',
+                  }}
+                >
+                  Месяц
+                </button>
+                <button 
+                  onClick={() => setCurrentView('week')} 
+                  className="view-button"
+                  style={{
+                    backgroundColor: currentView === 'week' ? 'rgba(255, 255, 255, 0.3)' : 'transparent',
+                    color: currentView === 'week' ? 'white' : 'white',
+                    fontWeight: currentView === 'week' ? '600' : '400',
+                  }}
+                >
+                  Неделя
+                </button>
+                <button 
+                  onClick={() => setCurrentView('day')} 
+                  className="view-button"
+                  style={{
+                    backgroundColor: currentView === 'day' ? 'rgba(255, 255, 255, 0.3)' : 'transparent',
+                    color: currentView === 'day' ? 'white' : 'white',
+                    fontWeight: currentView === 'day' ? '600' : '400',
+                  }}
+                >
+                  День
+                </button>
+                <button 
+                  onClick={() => setCurrentView('agenda')} 
+                  className="view-button"
+                  style={{
+                    backgroundColor: currentView === 'agenda' ? 'rgba(255, 255, 255, 0.3)' : 'transparent',
+                    color: currentView === 'agenda' ? 'white' : 'white',
+                    fontWeight: currentView === 'agenda' ? '600' : '400',
+                  }}
+                >
+                  Список
+                </button>
+              </div>
+            </div>
+
+              {/* Кнопка Telegram бота */}
+              <div className="sidebar-bottom">
+              <a
+                href={TELEGRAM_BOT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="telegram-button"
+              >
+                <svg width="35" height="35" viewBox="0 0 25 25" fill="currentColor">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.157l-1.895 8.863c-.127.585-.465.731-.942.455l-2.605-1.92-1.258 1.213c-.139.139-.256.256-.525.256l.188-2.665 4.838-4.37c.211-.188-.046-.292-.327-.104l-5.984 3.77-2.584-.805c-.564-.176-.576-.564.117-.844l10.1-3.883c.47-.176.882.104.728.844z"/>
+                </svg>
+                Напомнить о дедлайне
+              </a>
+              </div>
       </div>
 
       {/* Основная область */}
@@ -325,14 +325,6 @@ function App() {
         padding: '20px',
         overflow: 'hidden'
       }}>
-        <h1 style={{ 
-          margin: '0 0 20px 0', 
-          fontSize: '24px', 
-          color: '#333',
-          fontWeight: '600'
-        }}>
-          Календарь задач
-        </h1>
         
         {/* Календарь с кастомным Toolbar */}
         <div style={{ 
