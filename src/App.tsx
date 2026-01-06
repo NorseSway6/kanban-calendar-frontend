@@ -7,7 +7,7 @@ import './App.css';
 import TaskDetails from './components/TaskDetails';
 
 const API_BASE_URL = 'http://localhost:8080/api';
-const TELEGRAM_BOT_URL = 'https://web.telegram.org/k/#@my_test_1234567890_bo_bot'; // ЗАМЕНИТЬ НА ПОЛУЧЕННЫЙ chat_id
+const TELEGRAM_BOT_URL = 'https://web.telegram.org/k/#@my_test_1234567890_bo_bot'; // ЗАМЕНИТЬ НА ССЫЛКУ СОЗДАННОГО БОТА
 
 // Кастомный Toolbar
 const CustomToolbar: React.FC<any> = ({ label, onNavigate }) => {
@@ -56,8 +56,12 @@ const buttonStyle = {
   fontWeight: '500'
 };
 
+interface AppProps {
+  embedded?: boolean;
+}
+
 // Основной компонент App
-function App() {
+function App({ embedded = false }: AppProps) {
   // ВАЖНО: добавьте setEvents здесь!
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,15 +238,13 @@ function App() {
   return (
     <div style={{ 
       display: 'flex', 
-      height: '100vh', 
+      height: '100%', 
       backgroundColor: '#f8f9fa',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       {/* Боковая панель */}
       <div className='sidebar'>
-          <div className="sidebar-top">
-            <h2>📅 Календарь</h2>
-            
+          <div className="sidebar-top">            
             <div style={{ marginBottom: '25px' }}>
                 <button 
                     onClick={() => {

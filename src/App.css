@@ -28,13 +28,6 @@
   flex-direction: column;
 }
 
-.sidebar h2 {
-  margin: 0 0 25px 0;
-  font-size: 30px;
-  color: white !important;
-  font-weight: 600;
-}
-
 /* Кнопки вида */
 .view-button {
   display: block;
@@ -213,4 +206,79 @@
   flex-shrink: 0;
   color:#0088cc;
   font-weight: 60;
+}
+
+/* Стили для NodeResizer */
+.react-flow__node-resizer {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  z-index: 10;
+}
+
+.react-flow__resize-control {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 50%;
+}
+
+.react-flow__resize-control.left {
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.react-flow__resize-control.right {
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.react-flow__resize-control.top {
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.react-flow__resize-control.bottom {
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.react-flow__resize-control.top-left {
+  top: -8px;
+  left: -8px;
+}
+
+.react-flow__resize-control.top-right {
+  top: -8px;
+  right: -8px;
+}
+
+.react-flow__resize-control.bottom-left {
+  bottom: -8px;
+  left: -8px;
+}
+
+.react-flow__resize-control.bottom-right {
+  bottom: -8px;
+  right: -8px;
+}
+
+/* Убираем дефолтные стили, которые могут конфликтовать */
+.react-flow__node {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+/* Для закрепления */
+.react-flow__node[draggable="false"] .cursor-move {
+  cursor: default !important;
 }
