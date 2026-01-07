@@ -25,13 +25,13 @@ const CustomToolbar: React.FC<any> = ({ label, onNavigate }) => {
     }}>
       <div style={{ display: 'flex', gap: '10px' }}>
         <button onClick={() => onNavigate('PREV')} style={buttonStyle}>
-          ◀ Назад
+          ◀
         </button>
         <button onClick={() => onNavigate('TODAY')} style={buttonStyle}>
           Сегодня
         </button>
         <button onClick={() => onNavigate('NEXT')} style={buttonStyle}>
-          Вперёд ▶
+           ▶
         </button>
       </div>
       
@@ -57,13 +57,23 @@ const buttonStyle = {
 };
 
 interface AppProps {
-  embedded?: boolean;
+  apiBaseUrl?: string;
+  initialEvents?: any[];
+  onEventCreate?: (event: any) => Promise<void>;
+  onEventDelete?: (eventId: number) => Promise<void>;
+  onEventUpdate?: (eventId: number, event: any) => Promise<void>;
 }
 
 // Основной компонент App
-function App({ embedded = false }: AppProps) {
+function App({ 
+  apiBaseUrl = API_BASE_URL,
+  initialEvents = [],
+  onEventCreate,
+  onEventDelete,
+  onEventUpdate 
+}: AppProps) {
   // ВАЖНО: добавьте setEvents здесь!
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>(initialEvents);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('month');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -80,7 +90,7 @@ function App({ embedded = false }: AppProps) {
       try {
         setLoading(true);
 
-        const response = await fetch(`${API_BASE_URL}/tasks`);
+        const response = await fetch(`${apiBaseUrl}/tasks`);
         
         if (!response.ok) throw new Error('Ошибка загрузки данных');
         
@@ -143,7 +153,13 @@ function App({ embedded = false }: AppProps) {
   
   // Обработчик создания задачи
   const handleTaskSubmit = async (taskData: TaskData) => {
-    try {
+  try {
+    // Если передан колбэк от платформы, используем его
+    if (onEventCreate) {
+      console.log('🔄 Используем колбэк onEventCreate');
+      await onEventCreate(taskData);
+    } else {
+      // Иначе используем локальный API
       const taskRequest: any = {
         title: taskData.title,
         description: taskData.description,
@@ -158,6 +174,7 @@ function App({ embedded = false }: AppProps) {
         taskRequest.deadline = taskData.endDate.toISOString();
       }
 
+      console.log('📤 Отправляем запрос на сервер:', taskRequest);
       const response = await fetch(`${API_BASE_URL}/tasks`, {
         method: 'POST',
         headers: {
@@ -167,41 +184,57 @@ function App({ embedded = false }: AppProps) {
       });
 
       if (!response.ok) throw new Error('Ошибка создания задачи');
-
-      // ⭐ ВАЖНО: перезагружаем события после создания
-      await fetchEvents();
-      
-      setShowTaskForm(false);
-      setSelectedDate(undefined);
-      
-      console.log('Задача успешно создана и отображена');
-    } catch (error) {
-      console.error('Ошибка:', error);
-      alert('Не удалось создать задачу');
+      console.log('✅ Запрос успешен:', await response.json());
     }
-  };
 
+    // ⭐ ВАЖНО: перезагружаем события после создания
+    await fetchEvents();
+    
+    setShowTaskForm(false);
+    setSelectedDate(undefined);
+    
+    console.log('Задача успешно создана и отображена');
+  } catch (error) {
+    console.error('❌ Ошибка создания задачи:', error);
+    alert('Не удалось создать задачу');
+  }
+};
 
-  const handleDeleteTask = async (taskId: number) => {
-    try {
+const handleDeleteTask = async (taskId: number) => {
+  try {
+    // Если передан колбэк от платформы, используем его
+    if (onEventDelete) {
+      console.log('🔄 Используем колбэк onEventDelete:', taskId);
+      await onEventDelete(taskId);
+    } else {
+      // Иначе используем локальный API
+      console.log('📤 Отправляем DELETE запрос:', taskId);
       const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) throw new Error('Ошибка удаления задачи');
-
-      await fetchEvents(); // Перезагружаем события
-      setShowTaskDetails(false);
-      
-      console.log('Задача успешно удалена');
-    } catch (error) {
-      console.error('Ошибка:', error);
-      alert('Не удалось удалить задачу');
+      console.log('✅ Удаление успешно');
     }
-  };
 
-  const handleUpdateTask = async (taskId: number, updatedData: TaskData) => {
-    try {
+    await fetchEvents(); // Перезагружаем события
+    setShowTaskDetails(false);
+    
+    console.log('Задача успешно удалена');
+  } catch (error) {
+    console.error('❌ Ошибка удаления задачи:', error);
+    alert('Не удалось удалить задачу');
+  }
+};
+
+const handleUpdateTask = async (taskId: number, updatedData: TaskData) => {
+  try {
+    // Если передан колбэк от платформы, используем его
+    if (onEventUpdate) {
+      console.log('🔄 Используем колбэк onEventUpdate:', taskId, updatedData);
+      await onEventUpdate(taskId, updatedData);
+    } else {
+      // Иначе используем локальный API
       const taskRequest: any = {
         title: updatedData.title,
         description: updatedData.description,
@@ -213,9 +246,10 @@ function App({ embedded = false }: AppProps) {
 
       if (updatedData.endDate) {
         taskRequest.end_date = updatedData.endDate.toISOString();
-        taskRequest.deadline = updatedData.endDate.toISOString(); // endDate = deadline
+        taskRequest.deadline = updatedData.endDate.toISOString();
       }
 
+      console.log('📤 Отправляем PUT запрос:', taskId, taskRequest);
       const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
@@ -225,15 +259,17 @@ function App({ embedded = false }: AppProps) {
       });
 
       if (!response.ok) throw new Error('Ошибка обновления задачи');
-
-      await fetchEvents(); // Перезагружаем события
-      
-      console.log('Задача успешно обновлена');
-    } catch (error) {
-      console.error('Ошибка:', error);
-      alert('Не удалось обновить задачу');
+      console.log('✅ Обновление успешно:', await response.json());
     }
-  };
+
+    await fetchEvents(); // Перезагружаем события
+    
+    console.log('Задача успешно обновлена');
+  } catch (error) {
+    console.error('❌ Ошибка обновления задачи:', error);
+    alert('Не удалось обновить задачу');
+  }
+};
 
   return (
     <div style={{ 

@@ -3,34 +3,35 @@ import { Handle, Position, NodeResizer, useUpdateNodeInternals } from '@xyflow/r
 import { useState, useCallback, useEffect } from 'react';
 import App from '../App';
 
-const CalendarNode = ({ id, data, selected, isConnectable = true, width, height }: any) => {
+interface CalendarNodeProps {
+  id: string;
+  data: Record<string, any>; // Изменено на Record<string, any>
+  selected?: boolean;
+  isConnectable?: boolean;
+}
+
+const CalendarNode: React.FC<CalendarNodeProps> = ({ 
+  id, 
+  data, 
+  selected = false, 
+  isConnectable = true 
+}) => {
   const [isPinned, setIsPinned] = useState(data.isPinned || false);
-  const [dimensions, setDimensions] = useState({ 
-    width: width || data.width || 900, 
-    height: height || data.height || 700 
-  });
-  
   const updateNodeInternals = useUpdateNodeInternals();
 
   useEffect(() => {
-    if (width && height) {
-      setDimensions({ width, height });
+    if (data.widgetConfig) {
+      console.log('Виджет инициализирован с конфигурацией:', data.widgetConfig);
     }
-  }, [width, height]);
+  }, [data.widgetConfig]);
 
   const handleResize = useCallback((event: any, params: any) => {
-    setDimensions({ width: params.width, height: params.height });
-    
     if (data.onResize) {
-      data.onResize(params.width, params.height, id);
+      data.onResize({ width: params.width, height: params.height });
     }
     
     updateNodeInternals(id);
   }, [data, id, updateNodeInternals]);
-
-  const handleResizeStop = useCallback((event: any, params: any) => {
-    console.log('Resize stopped:', params);
-  }, []);
 
   const togglePin = () => {
     const newPinnedState = !isPinned;
@@ -47,12 +48,11 @@ const CalendarNode = ({ id, data, selected, isConnectable = true, width, height 
         selected ? 'border-blue-500' : 'border-gray-200'
       }`}
       style={{
-        width: dimensions.width,
-        height: dimensions.height,
+        width: '100%',
+        height: '100%',
         overflow: 'hidden'
       }}
     >
-      {/* NodeResizer для изменения размера */}
       {selected && (
         <NodeResizer
           minWidth={600}
@@ -60,56 +60,58 @@ const CalendarNode = ({ id, data, selected, isConnectable = true, width, height 
           maxWidth={1400}
           maxHeight={1000}
           lineClassName="border-blue-400"
-          handleClassName="h-4 w-4 bg-white border-2 border-blue-400 rounded-full"
+          handleClassName="h-3 w-3 bg-white border-2 border-blue-400 rounded-full"
           onResize={handleResize}
-          onResizeEnd={handleResizeStop}
         />
       )}
       
-      {/* Верхняя панель */}
-        <div
-          className={`p-1 cursor-move flex justify-between items-center ${
-            !isPinned ? 'dragHandle_custom' : ''
-          }`}
-        >
-          {/* Handle слева */}
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            className="z-100000 !w-3 !h-3 !bg-blue-500 !border-2 !border-white !rounded-full" 
-          />
-          
-          {/* Кнопка закрепления*/}
-          <div className="flex gap-2 items-center">
-            <span className="text-sm font-bold w-full text-center pr-4"> 📅 Календарь </span>
-
-            <button
-              onClick={togglePin}
-              className={`cursor-pointer p-1 rounded-full ${
-                isPinned ? 'text-blue-500 bg-blue-50' : 'text-gray-500 bg-gray-100'
-              }`}
-              title={isPinned ? "Открепить" : "Закрепить"}
-            >
-              {isPinned ? '📌' : '📍'}
-            </button>
-          </div>
-
-          <Handle 
-              type="source" 
-              position={Position.Right} 
-              className="z-100000 !w-3 !h-3 !bg-green-500 !border-2 !border-white !rounded-full" 
-            />
+      <div className={`p-3 border-b border-gray-200 bg-gray-50 rounded-t-lg flex items-center justify-between ${
+        !isPinned ? 'cursor-move' : ''
+      }`}>
+        <Handle
+          type="target"
+          position={Position.Left}
+          isConnectable={isConnectable}
+          className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white !rounded-full"
+          id="target"
+        />
+        
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-bold text-gray-800"> 📅 Календарь </span>
+          <button
+            onClick={togglePin}
+            className={`p-1.5 rounded-full transition-colors ${
+              isPinned 
+                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' 
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+            title={isPinned ? "Открепить" : "Закрепить"}
+          >
+            {isPinned ? '📌' : '📍'}
+          </button>
         </div>
+        
+        <Handle
+          type="source"
+          position={Position.Right}
+          isConnectable={isConnectable}
+          className="!w-3 !h-3 !bg-green-500 !border-2 !border-white !rounded-full"
+          id="source"
+        />
+      </div>
 
-      {/* Календарь (основное содержимое) */}
-      <div 
-        className="overflow-hidden"
-        style={{ 
-          width: '100%', 
-          height: 'calc(100% - 40px)'
-        }}
-      >
-        <App />
+      <div className="overflow-auto" style={{ 
+        width: '100%', 
+        height: 'calc(100% - 30px)',
+        padding: '4px'
+      }}>
+        <App 
+          apiBaseUrl={data.apiBaseUrl}
+          initialEvents={data.events}
+          onEventCreate={data.onEventCreate}
+          onEventDelete={data.onEventDelete}
+          onEventUpdate={data.onEventUpdate}
+        />
       </div>
     </div>
   );
