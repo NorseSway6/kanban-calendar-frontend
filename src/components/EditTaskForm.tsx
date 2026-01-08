@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import moment from 'moment';
+import './css/EditTaskForm.css';
 
 interface EditTaskFormProps {
   isOpen: boolean;
@@ -8,7 +9,6 @@ interface EditTaskFormProps {
   taskData: TaskData;
 }
 
-// Используем тот же TaskData из TaskForm
 export interface TaskData {
   title: string;
   description: string;
@@ -28,6 +28,7 @@ const EditTaskForm: React.FC<EditTaskFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<TaskData>(taskData);
   const [tagInput, setTagInput] = useState('');
+  const [errors, setErrors] = useState<{[key: string]: string}>({}); 
 
   if (!isOpen) return null;
 
@@ -37,6 +38,15 @@ const EditTaskForm: React.FC<EditTaskFormProps> = ({
       alert('Название задачи не может быть пустым');
       return;
     }
+
+    // Проверяем валидацию дат
+    const dateError = validateDates(formData.startDate, formData.endDate);
+    if (dateError) {
+      setErrors({...errors, dates: dateError});
+      alert(dateError); // Показываем сообщение об ошибке
+      return;
+    }
+
     onSubmit(formData);
     onClose();
   };
@@ -51,63 +61,54 @@ const EditTaskForm: React.FC<EditTaskFormProps> = ({
     }
   };
 
-  const removeTag = (tagToRemove: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter(tag => tag !== tagToRemove),
-    });
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && tagInput.trim()) {
-      e.preventDefault();
-      addTag();
+  const validateDates = (startDate: Date, endDate?: Date): string | null => {
+    if (endDate && startDate > endDate) {
+      return 'Дата начала не может быть позже даты окончания';
     }
+    return null;
   };
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <div style={headerStyle}>
-          <h3 style={{ margin: 0 }}>✏️ Редактировать задачу</h3>
-          <button onClick={onClose} style={closeButtonStyle}>×</button>
+    <div className="edit-task-overlay">
+      <div className="edit-task-modal">
+        <div className="edit-task-header">
+          <h3 style={{ margin: 0 }}>Редактировать задачу</h3>
+          <button onClick={onClose} className="edit-task-close-button">×</button>
         </div>
         
-        <form onSubmit={handleSubmit} style={formStyle}>
-          {/* Название */}
-          <div style={inputGroupStyle}>
-            <label style={labelStyle}>Название задачи *</label>
+        <form onSubmit={handleSubmit} className="edit-task-form">
+          <div className="edit-task-input-group">
+            <label className="edit-task-label">Название задачи *</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              style={inputStyle}
+              className="edit-task-input"
               placeholder="Введите название задачи"
               required
               autoFocus
             />
           </div>
 
-          {/* Описание */}
-          <div style={inputGroupStyle}>
-            <label style={labelStyle}>Описание</label>
+          <div className="edit-task-input-group">
+            <label className="edit-task-label">Описание</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
+              className="edit-task-input"
+              style={{ minHeight: '80px', resize: 'vertical' }}
               placeholder="Добавьте описание задачи"
               rows={3}
             />
           </div>
 
-          <div style={rowStyle}>
-            {/* Статус */}
-            <div style={{ ...inputGroupStyle, flex: 1 }}>
-              <label style={labelStyle}>Статус</label>
+          <div className="edit-task-row">
+            <div className="edit-task-input-group" style={{ flex: 1 }}>
+              <label className="edit-task-label">Статус</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                style={inputStyle}
+                className="edit-task-input"
               >
                 <option value="todo">📝 К выполнению</option>
                 <option value="in_progress">🔄 В работе</option>
@@ -115,13 +116,12 @@ const EditTaskForm: React.FC<EditTaskFormProps> = ({
               </select>
             </div>
 
-            {/* Приоритет */}
-            <div style={{ ...inputGroupStyle, flex: 1 }}>
-              <label style={labelStyle}>Приоритет</label>
+            <div className="edit-task-input-group" style={{ flex: 1 }}>
+              <label className="edit-task-label">Приоритет</label>
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                style={inputStyle}
+                className="edit-task-input"
               >
                 <option value="low">🟢 Низкий</option>
                 <option value="medium">🟡 Средний</option>
@@ -130,284 +130,199 @@ const EditTaskForm: React.FC<EditTaskFormProps> = ({
             </div>
           </div>
 
-          <div style={rowStyle}>
-            {/* Дата и время начала */}
-              <div style={{ ...inputGroupStyle, flex: 1 }}>
-                <label style={labelStyle}>Дата и время начала *</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="date"
-                    value={moment(formData.startDate).format('YYYY-MM-DD')}
-                    onChange={(e) => {
-                      const dateStr = e.target.value;
-                      if (!dateStr) return;
-                      
-                      const newDate = new Date(formData.startDate);
-                      const [year, month, day] = dateStr.split('-').map(Number);
-                      newDate.setFullYear(year, month - 1, day);
-                      setFormData({ ...formData, startDate: newDate });
-                    }}
-                    style={{ ...inputStyle, flex: 2 }}
-                    required
-                  />
-                  <input
-                    type="time"
-                    value={moment(formData.startDate).format('HH:mm')}
-                    onChange={(e) => {
-                      const timeStr = e.target.value;
-                      if (!timeStr) return;
-                      
-                      const newDate = new Date(formData.startDate);
-                      const [hours, minutes] = timeStr.split(':').map(Number);
-                      newDate.setHours(hours, minutes);
-                      setFormData({ ...formData, startDate: newDate });
-                    }}
-                    style={{ ...inputStyle, flex: 1 }}
-                    required
-                    step="300" // 5 минут интервал
-                  />
-                </div>
-              </div>
-            
-                  {/* Дата и время окончания */}
-                        <div style={{ ...inputGroupStyle, flex: 1 }}>
-                          <label style={labelStyle}>Дата окончания (дедлайн)</label>
+          <div className="task-form-row">
+                      <div className="task-form-input-group" style={{ flex: 1 }}>
+                        <label className="task-form-label">Дата и время начала *</label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                           <input
-                            type="datetime-local"
-                            value={formData.endDate ? moment(formData.endDate).format('YYYY-MM-DDTHH:mm') : ''}
+                            type="date"
+                            value={moment(formData.startDate).format('YYYY-MM-DD')}
                             onChange={(e) => {
-                              const value = e.target.value;
-                              setFormData({ 
-                                ...formData, 
-                                endDate: value ? new Date(value) : undefined
-                              });
+                              const dateStr = e.target.value;
+                              if (!dateStr) return;
+                              
+                              const newDate = new Date(formData.startDate);
+                              const [year, month, day] = dateStr.split('-').map(Number);
+                              newDate.setFullYear(year, month - 1, day);
+                              setFormData({ ...formData, startDate: newDate });
+          
+                              const newFormData = { ...formData, startDate: newDate };
+                              setFormData(newFormData);
+                              
+                              // Проверяем валидацию
+                              const dateError = validateDates(newDate, newFormData.endDate);
+                              if (dateError) {
+                                setErrors({...errors, dates: dateError});
+                              } else {
+                                // Убираем ошибку, если она была
+                                const newErrors = {...errors};
+                                delete newErrors.dates;
+                                setErrors(newErrors);
+                              }
                             }}
-                            style={inputStyle}
-                            placeholder="Необязательно"
+                            className="task-form-input"
+                            style={{ flex: 2 }}
+                            required
                           />
-                          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                            Если установить, задача будет иметь дедлайн
-                          </div>
+                          <input
+                            type="time"
+                            value={moment(formData.startDate).format('HH:mm')}
+                            onChange={(e) => {
+                              const timeStr = e.target.value;
+                              if (!timeStr) return;
+                              
+                              const newDate = new Date(formData.startDate);
+                              const [hours, minutes] = timeStr.split(':').map(Number);
+                              newDate.setHours(hours, minutes);
+                              setFormData({ ...formData, startDate: newDate });
+          
+                              const newFormData = { ...formData, startDate: newDate };
+                              setFormData(newFormData);
+                              
+                              // Проверяем валидацию
+                              const dateError = validateDates(newDate, newFormData.endDate);
+                              if (dateError) {
+                                setErrors({...errors, dates: dateError});
+                              } else {
+                                const newErrors = {...errors};
+                                delete newErrors.dates;
+                                setErrors(newErrors);
+                              }
+                            }}
+                            className="task-form-input"
+                            style={{ flex: 1 }}
+                            required
+                            step="300"
+                          />
                         </div>
-                </div>
+                      </div>
+          
+                      <div className="task-form-input-group" style={{ flex: 1 }}>
+                        <label className="task-form-label">Дата окончания (дедлайн)</label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input
+                            type="date"
+                            value={formData.endDate ? moment(formData.endDate).format('YYYY-MM-DD') : ''}
+                            onChange={(e) => {
+                              const dateStr = e.target.value;
+                              if (dateStr) {
+                                const newDate = formData.endDate ? new Date(formData.endDate) : new Date();
+                                const [year, month, day] = dateStr.split('-').map(Number);
+                                newDate.setFullYear(year, month - 1, day);
+                                setFormData({ ...formData, endDate: newDate });
+          
+                                const newFormData = { ...formData, endDate: newDate };
+                                setFormData(newFormData);
+          
+                                const dateError = validateDates(newFormData.startDate, newDate);
+                                if (dateError) {
+                                  setErrors({...errors, dates: dateError});
+                                } else {
+                                  const newErrors = {...errors};
+                                  delete newErrors.dates;
+                                  setErrors(newErrors);
+                                }
+                              } else {
+                                setFormData({ ...formData, endDate: undefined });
+                                const newErrors = {...errors};
+                                delete newErrors.dates;
+                                setErrors(newErrors);
+                              }
+                            }}
+                            className="task-form-input"
+                            style={{ flex: 2 }}
+                            placeholder="Дата"
+                          />
+                          <input
+                            type="time"
+                            value={formData.endDate ? moment(formData.endDate).format('HH:mm') : ''}
+                            onChange={(e) => {
+                              const timeStr = e.target.value;
+                              if (timeStr && formData.endDate) {
+                                const newDate = new Date(formData.endDate);
+                                const [hours, minutes] = timeStr.split(':').map(Number);
+                                newDate.setHours(hours, minutes);
+                                setFormData({ ...formData, endDate: newDate });
+          
+                                const newFormData = { ...formData, endDate: newDate };
+                                setFormData(newFormData);
+                                
+                                // Проверяем валидацию
+                                const dateError = validateDates(newFormData.startDate, newDate);
+                                if (dateError) {
+                                  setErrors({...errors, dates: dateError});
+                                } else {
+                                  const newErrors = {...errors};
+                                  delete newErrors.dates;
+                                  setErrors(newErrors);
+                                }
+                              } else if (timeStr && !formData.endDate) {
+                                // Если дата не установлена, создаем новую с текущей датой
+                                const newDate = new Date();
+                                const [hours, minutes] = timeStr.split(':').map(Number);
+                                newDate.setHours(hours, minutes);
+                                setFormData({ ...formData, endDate: newDate });
+          
+                                const newFormData = { ...formData, endDate: newDate };
+                                setFormData(newFormData);
+                                
+                                // Проверяем валидацию
+                                const dateError = validateDates(newFormData.startDate, newDate);
+                                if (dateError) {
+                                  setErrors({...errors, dates: dateError});
+                                } else {
+                                  const newErrors = {...errors};
+                                  delete newErrors.dates;
+                                  setErrors(newErrors);
+                                }
+                              }
+                            }}
+                            className="task-form-input"
+                            style={{ flex: 1 }}
+                            placeholder="Время"
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-          {/* Исполнитель */}
-          <div style={inputGroupStyle}>
-            <label style={labelStyle}>Исполнитель</label>
+              {errors.dates && (
+              <div style={{
+                color: '#dc3545',
+                fontSize: '12px',
+                marginTop: 0,
+                padding: '8px',
+                backgroundColor: '#ffeaea',
+                borderRadius: '4px',
+                border: '1px solid #ff6b6b',
+                marginBottom: '20px'
+              }}>
+                ⚠️ {errors.dates}
+              </div>
+            )}
+
+          <div className="edit-task-input-group">
+            <label className="edit-task-label">Исполнитель</label>
             <input
               type="text"
               value={formData.assignee}
               onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
-              style={inputStyle}
+              className="edit-task-input"
               placeholder="Введите имя исполнителя"
             />
           </div>
 
-          {/* Теги */}
-          <div style={inputGroupStyle}>
-            <label style={labelStyle}>Теги</label>
-            <div style={tagInputStyle}>
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                style={{ ...inputStyle, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-                placeholder="Введите тег и нажмите Enter"
-              />
-              <button
-                type="button"
-                onClick={addTag}
-                style={tagAddButtonStyle}
-              >
-                +
-              </button>
-            </div>
-            <div style={tagsContainerStyle}>
-              {formData.tags.map((tag, index) => (
-                <span key={index} style={tagStyle}>
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => removeTag(tag)}
-                    style={tagRemoveButtonStyle}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Кнопки формы */}
-          <div style={formActionsStyle}>
-            <button type="button" onClick={onClose} style={cancelButtonStyle}>
+          <div className="edit-task-form-actions">
+            <button type="button" onClick={onClose} className="edit-task-cancel-button">
               Отмена
             </button>
-            <button type="submit" style={submitButtonStyle}>
-              💾 Сохранить изменения
+            <button type="submit" className="edit-task-submit-button">
+              Сохранить изменения
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-};
-
-// Стили (можно вынести в отдельный файл или использовать те же, что и в TaskForm)
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 2000,
-  padding: '20px',
-};
-
-const modalStyle: React.CSSProperties = {
-  backgroundColor: 'white',
-  borderRadius: '12px',
-  width: '100%',
-  maxWidth: '600px',
-  maxHeight: '90vh',
-  overflowY: 'auto',
-  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '20px 24px',
-  borderBottom: '1px solid #eaeaea',
-};
-
-const closeButtonStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: '24px',
-  cursor: 'pointer',
-  color: '#666',
-  padding: '0',
-  width: '30px',
-  height: '30px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: '4px',
-};
-
-const formStyle: React.CSSProperties = {
-  padding: '24px',
-};
-
-const inputGroupStyle: React.CSSProperties = {
-  marginBottom: '20px',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  marginBottom: '6px',
-  fontWeight: '500',
-  color: '#333',
-  fontSize: '14px',
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 12px',
-  border: '1px solid #ddd',
-  borderRadius: '6px',
-  fontSize: '14px',
-  boxSizing: 'border-box',
-  fontFamily: 'inherit',
-};
-
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: '16px',
-  marginBottom: '20px',
-};
-
-const tagInputStyle: React.CSSProperties = {
-  display: 'flex',
-  marginBottom: '8px',
-};
-
-const tagAddButtonStyle: React.CSSProperties = {
-  padding: '10px 16px',
-  backgroundColor: '#f0f0f0',
-  border: '1px solid #ddd',
-  borderLeft: 'none',
-  borderTopRightRadius: '6px',
-  borderBottomRightRadius: '6px',
-  cursor: 'pointer',
-  fontSize: '16px',
-};
-
-const tagsContainerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '6px',
-};
-
-const tagStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '4px',
-  backgroundColor: '#e9ecef',
-  padding: '4px 10px',
-  borderRadius: '16px',
-  fontSize: '12px',
-  color: '#495057',
-};
-
-const tagRemoveButtonStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  color: '#6c757d',
-  cursor: 'pointer',
-  fontSize: '14px',
-  padding: '0',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-};
-
-const formActionsStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: '12px',
-  marginTop: '32px',
-  paddingTop: '20px',
-  borderTop: '1px solid #eaeaea',
-};
-
-const cancelButtonStyle: React.CSSProperties = {
-  padding: '10px 20px',
-  backgroundColor: '#6c757d',
-  color: 'white',
-  border: 'none',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  fontSize: '14px',
-  fontWeight: '500',
-};
-
-const submitButtonStyle: React.CSSProperties = {
-  padding: '10px 24px',
-  backgroundColor: '#007bff',
-  color: 'white',
-  border: 'none',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  fontSize: '14px',
-  fontWeight: '600',
 };
 
 export default EditTaskForm;

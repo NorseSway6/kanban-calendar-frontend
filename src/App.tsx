@@ -6,7 +6,7 @@ import TaskForm, { TaskData } from './components/TaskForm';
 import './App.css';
 import TaskDetails from './components/TaskDetails';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = 'http://localhost:8080/api'; // АДРЕС БЕКЕНДА КАЛЕНДАРЯ
 const TELEGRAM_BOT_URL = 'https://web.telegram.org/k/#@my_test_1234567890_bo_bot'; // ЗАМЕНИТЬ НА ССЫЛКУ СОЗДАННОГО БОТА
 
 // Кастомный Toolbar
@@ -247,6 +247,9 @@ const handleUpdateTask = async (taskId: number, updatedData: TaskData) => {
       if (updatedData.endDate) {
         taskRequest.end_date = updatedData.endDate.toISOString();
         taskRequest.deadline = updatedData.endDate.toISOString();
+      } else {
+        taskRequest.end_date = null;
+        taskRequest.deadline = null;
       }
 
       console.log('📤 Отправляем PUT запрос:', taskId, taskRequest);
