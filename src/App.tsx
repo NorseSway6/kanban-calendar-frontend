@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -62,6 +62,8 @@ interface AppProps {
   onEventCreate?: (event: any) => Promise<void>;
   onEventDelete?: (eventId: number) => Promise<void>;
   onEventUpdate?: (eventId: number, event: any) => Promise<void>;
+  subscribe?: (callback: (msg: any) => void) => () => void;
+  sendMessage?: (msg: any) => void;
 }
 
 // Основной компонент App
@@ -70,7 +72,9 @@ function App({
   initialEvents = [],
   onEventCreate,
   onEventDelete,
-  onEventUpdate 
+  onEventUpdate,
+  subscribe,
+  sendMessage,
 }: AppProps) {
   // ВАЖНО: добавьте setEvents здесь!
   const [events, setEvents] = useState<any[]>(initialEvents);
@@ -81,12 +85,14 @@ function App({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showTaskDetails, setShowTaskDetails] = useState(false);
+  const [lastMessageTime, setLastMessageTime] = useState<number>(0);
+  const MESSAGE_THROTTLE_MS = 1000; // 1 секунда между сообщениями
 
   useEffect(() => {
     fetchEvents();
   }, [currentView, currentDate]);
 
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
       try {
         setLoading(true);
 
@@ -143,11 +149,47 @@ function App({
       } finally {
         setLoading(false);
       }
-    };
+    }, [apiBaseUrl]);
       
   
   moment.locale('ru');
   const localizer = momentLocalizer(moment);
+
+  // src/App.tsx
+// В компоненте App:
+
+  useEffect(() => {
+    if (!subscribe) {
+      console.log('⚠️ App: subscribe не доступен');
+      return;
+    }
+
+    const messageHandler = (message: any) => {
+      // Троттлинг: не обрабатываем сообщения чаще чем раз в секунду
+      const now = Date.now();
+      if (now - lastMessageTime < MESSAGE_THROTTLE_MS) {
+        console.log('⚠️ Пропускаем сообщение (троттлинг)');
+        return;
+      }
+      
+      setLastMessageTime(now);
+      console.log('📨 App получил сообщение:', message.type);
+      
+      // Обновляем календарь только для определенных типов сообщений
+      if (['EVENT_CREATED', 'EVENT_UPDATED', 'EVENT_DELETED'].includes(message.type)) {
+        console.log('Обновляю календарь из-за:', message.type);
+        fetchEvents();
+      }
+    };
+
+    const unsubscribe = subscribe(messageHandler);
+    console.log('✅ App подписался на сообщения');
+
+    return () => {
+      console.log('🗑️ App отписался от сообщений');
+      unsubscribe();
+    };
+  }, [subscribe, fetchEvents, lastMessageTime]); // Добавляем fetchEvents в зависимости
   
   // Обработчик создания задачи
   const handleTaskSubmit = async (taskData: TaskData) => {
@@ -183,6 +225,15 @@ function App({
 
       if (!response.ok) throw new Error('Ошибка создания задачи');
       console.log('✅ Запрос успешен:', await response.json());
+    }
+
+    // Отправляем уведомление через платформу
+    if (sendMessage) {
+      sendMessage({
+        type: 'EVENT_CREATE_NOTIFY',
+        event: taskData,
+        timestamp: new Date().toISOString()
+      });
     }
 
     // ⭐ ВАЖНО: перезагружаем события после создания

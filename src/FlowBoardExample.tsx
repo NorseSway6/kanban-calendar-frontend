@@ -1,5 +1,5 @@
 // src/FlowBoard.tsx
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, Node, Edge } from '@xyflow/react';
 import { useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -167,6 +167,74 @@ const initialEdges: Edge[] = [];
 function FlowBoard() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [messageSubscribers, setMessageSubscribers] = useState<((msg: any) => void)[]>([]);
+  const messageSubscribersRef = useRef<Set<(msg: any) => void>>(new Set());
+
+  const subscribe = useCallback((callback: (msg: any) => void) => {
+    console.log('✅ Подписчик добавлен');
+    messageSubscribersRef.current.add(callback);
+    
+    return () => {
+      console.log('✅ Подписчик удален');
+      messageSubscribersRef.current.delete(callback);
+    };
+  }, []);
+
+
+  const broadcastMessage = useCallback((message: any) => {
+    console.log('📢 [Platform] Broadcast:', message);
+    messageSubscribersRef.current.forEach(callback => callback(message));
+  }, []);
+
+  useEffect(() => {
+    // Симуляция: сообщение при загрузке
+    const timer = setTimeout(() => {
+      broadcastMessage({
+        type: 'SYSTEM_MESSAGE',
+        message: 'Система инициализирована',
+        timestamp: new Date().toISOString()
+      });
+    }, 1000);
+    
+    // Симуляция: периодические сообщения (с интервалом)
+    const interval = setInterval(() => {
+      broadcastMessage({
+        type: 'EVENT_CREATED',
+        widgetId: 1,
+        event: {
+          id: Date.now(),
+          title: 'Авто-событие',
+          start: new Date(),
+          end: new Date(Date.now() + 3600000)
+        },
+        timestamp: new Date().toISOString()
+      });
+    }, 30000); // Увеличиваем интервал до 30 секунд
+    
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [broadcastMessage]); 
+
+  useEffect(() => {
+  // Симуляция: каждые 10 секунд "приходит" сообщение от другого пользователя
+    const interval = setInterval(() => {
+      broadcastMessage({
+        type: 'EVENT_CREATED',
+        widgetId: 1,
+        event: {
+          id: Date.now(),
+          title: 'Тестовое событие от другого пользователя',
+          start: new Date(),
+          end: new Date(Date.now() + 3600000)
+        },
+        timestamp: new Date().toISOString()
+      });
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [broadcastMessage]);
 
   // Функция для обновления закрепления
   const updateNodePin = useCallback((nodeId: string, isPinned: boolean) => {
@@ -185,15 +253,16 @@ function FlowBoard() {
         return node;
       })
     );
-    console.log(`📌 [FlowBoard] Нода ${nodeId} закреплена: ${isPinned}`);
     
-    // Также отправляем моковый WebSocket для тестирования интеграции
-    mockWebSocketSend({
-      type: 'WIDGET_PIN',
-      widgetId: parseInt(nodeId.split('-')[1]) || 1,
-      isPinned,
-      timestamp: new Date().toISOString()
-    });
+    // Отправляем сообщение с задержкой
+    setTimeout(() => {
+      mockWebSocketSend({
+        type: 'WIDGET_PINNED',
+        widgetId: parseInt(nodeId.split('-')[1]) || 1,
+        isPinned,
+        timestamp: new Date().toISOString()
+      });
+    }, 100);
   }, [setNodes]);
 
   // Функция для обновления размера
@@ -221,14 +290,39 @@ function FlowBoard() {
     console.log(`📏 [FlowBoard] Нода ${nodeId} изменена: ${width}x${height}`);
     
     // Также отправляем моковый WebSocket для тестирования интеграции
-    mockWebSocketSend({
-      type: 'WIDGET_RESIZE',
-      widgetId: parseInt(nodeId.split('-')[1]) || 1,
-      width,
-      height,
-      timestamp: new Date().toISOString()
-    });
+    setTimeout(() => {
+      mockWebSocketSend({
+        type: 'WIDGET_PINNED',
+        widgetId: parseInt(nodeId.split('-')[1]) || 1,
+        width,
+        height,
+        timestamp: new Date().toISOString()
+      });
+    }, 100);
   }, [setNodes]);
+
+  const nodesWithCallbacks = useMemo(() => {
+    return nodes.map((node) => {
+      const widgetId = parseInt(node.id.split('-')[1]) || 1;
+      
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          embedded: true,
+          onPinToggle: (isPinned: boolean, nodeId: string = node.id) => {
+            updateNodePin(nodeId, isPinned);
+          },
+          onResize: (width: number, height: number, nodeId: string = node.id) => {
+            updateNodeSize(nodeId, width, height);
+          },
+          // 👇 Используем мемоизированные функции
+          subscribe,
+          sendMessage: mockWebSocketSend,
+        },
+      };
+    });
+  }, [nodes, subscribe, updateNodePin, updateNodeSize]);
 
   // Функция для добавления нового виджета
   const addNewWidget = useCallback(() => {
@@ -378,20 +472,6 @@ function FlowBoard() {
     console.log(`✅ [FlowBoard] Виджет ${nodeId} создан`);
   }, [setNodes]);
 
-  // Обновляем ноды с callback функциями
-  const nodesWithCallbacks = nodes.map((node) => ({
-    ...node,
-    data: {
-      ...node.data,
-      embedded: true,
-      onPinToggle: (isPinned: boolean, nodeId: string = node.id) => {
-        updateNodePin(nodeId, isPinned);
-      },
-      onResize: (width: number, height: number, nodeId: string = node.id) => {
-        updateNodeSize(nodeId, width, height);
-      },
-    },
-  }));
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>

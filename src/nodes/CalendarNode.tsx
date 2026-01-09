@@ -19,6 +19,68 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
 }) => {
   const [isPinned, setIsPinned] = useState(data.isPinned || false);
   const updateNodeInternals = useUpdateNodeInternals();
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+
+  // src/nodes/CalendarNode.tsx
+// Обновляем useEffect:
+
+  useEffect(() => {
+    // Проверяем, есть ли функция подписки
+    if (!data.subscribe) {
+      console.log('⚠️ subscribe не доступен');
+      return;
+    }
+
+    // Если уже подписаны - выходим
+    if (subscriptionId) {
+      console.log('⚠️ Уже подписаны');
+      return;
+    }
+
+    console.log('📡 Начинаем подписку...');
+    
+    const messageHandler = (message: any) => {
+      // Фильтруем сообщения по widgetId если он есть
+      if (message.widgetId && data.widgetConfig?.widgetId) {
+        if (message.widgetId !== data.widgetConfig.widgetId) {
+          return; // Пропускаем сообщения для других виджетов
+        }
+      }
+      
+      console.log('📨 Получено сообщение для виджета:', data.widgetConfig?.widgetId, message);
+      
+      switch (message.type) {
+        case 'WIDGET_PINNED':
+          if (message.isPinned !== isPinned) {
+            console.log('Обновление состояния закрепления:', message.isPinned);
+            setIsPinned(message.isPinned);
+          }
+          break;
+        case 'SYSTEM_MESSAGE':
+          console.log('Системное сообщение:', message.message);
+          break;
+        case 'EVENT_CREATED':
+          console.log('Событие создано другим пользователем');
+          // Можно добавить обновление календаря
+          break;
+      }
+    };
+
+    // Подписываемся
+    const unsubscribe = data.subscribe(messageHandler);
+    
+    // Генерируем ID подписки для отслеживания
+    const subId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setSubscriptionId(subId);
+    console.log('✅ Подписка создана:', subId);
+
+    // Отписка при размонтировании
+    return () => {
+      console.log('🗑️ Отписываемся:', subId);
+      unsubscribe();
+      setSubscriptionId(null);
+    };
+  }, [data.subscribe, data.widgetConfig?.widgetId, isPinned]); // Только при изменении этих зависимостей
 
   const handleResize = useCallback((event: any, params: any) => {
     if (data.onResize) {
