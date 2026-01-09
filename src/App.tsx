@@ -38,10 +38,6 @@ const CustomToolbar: React.FC<any> = ({ label, onNavigate }) => {
       <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
         {label}
       </div>
-      
-      <div style={{ display: 'flex', gap: '10px' }}>
-        {/* Дополнительные кнопки */}
-      </div>
     </div>
   );
 };
@@ -154,9 +150,6 @@ function App({
   
   moment.locale('ru');
   const localizer = momentLocalizer(moment);
-
-  // src/App.tsx
-// В компоненте App:
 
   useEffect(() => {
     if (!subscribe) {

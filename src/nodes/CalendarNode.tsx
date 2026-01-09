@@ -18,11 +18,9 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
   isConnectable = true 
 }) => {
   const [isPinned, setIsPinned] = useState(data.isPinned || false);
+  const [isSaving, setIsSaving] = useState(false);
   const updateNodeInternals = useUpdateNodeInternals();
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
-
-  // src/nodes/CalendarNode.tsx
-// Обновляем useEffect:
 
   useEffect(() => {
     // Проверяем, есть ли функция подписки
@@ -80,22 +78,54 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
       unsubscribe();
       setSubscriptionId(null);
     };
-  }, [data.subscribe, data.widgetConfig?.widgetId, isPinned]); // Только при изменении этих зависимостей
+  }, [data.subscribe, data.widgetConfig?.widgetId, isPinned]);
 
-  const handleResize = useCallback((event: any, params: any) => {
-    if (data.onResize) {
-      data.onResize(params.width, params.height );
+  const handleResize = useCallback(async (event: any, params: any) => {
+    setIsSaving(true);
+    try {
+      // Сохраняем в конфиг через saveConfig
+      if (data.saveConfig) {
+        data.saveConfig({ 
+          width: params.width, 
+          height: params.height 
+        })
+        .then(() => console.log('✅ Размер сохранен в конфиг'))
+        .catch(error => console.error('❌ Ошибка сохранения конфига:', error))
+        .finally(() => setIsSaving(false)); // 👈 Скрываем индикатор после сохранения
+      }
+      
+      // Вызываем колбэк платформы
+      if (data.onResize) {
+        data.onResize(params.width, params.height);
+      }
+    } catch (error) {
+      console.error('❌ Ошибка сохранения размера:', error);
+    } finally {
+      setIsSaving(false);
+      updateNodeInternals(id);
     }
-    
-    updateNodeInternals(id);
   }, [data, id, updateNodeInternals]);
 
-  const togglePin = () => {
+  const togglePin = async () => {
     const newPinnedState = !isPinned;
     setIsPinned(newPinnedState);
+    setIsSaving(true);
     
-    if (data.onPinToggle) {
-      data.onPinToggle(newPinnedState);
+    try {
+      // Сохраняем в конфиг через saveConfig
+      if (data.saveConfig) {
+        await data.saveConfig({ isPinned: newPinnedState });
+        console.log('✅ Состояние закрепления сохранено');
+      }
+      
+      // Вызываем колбэк платформы
+      if (data.onPinToggle) {
+        data.onPinToggle(newPinnedState);
+      }
+    } catch (error) {
+      console.error('❌ Ошибка сохранения закрепления:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -110,6 +140,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
         overflow: 'hidden'
       }}
     >
+      
       {selected && (
         <NodeResizer
           minWidth={600}
@@ -168,6 +199,8 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
           onEventCreate={data.onEventCreate}
           onEventDelete={data.onEventDelete}
           onEventUpdate={data.onEventUpdate}
+          subscribe={data.subscribe}
+          sendMessage={data.sendMessage}
         />
       </div>
     </div>

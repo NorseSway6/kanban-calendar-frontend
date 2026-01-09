@@ -1,6 +1,6 @@
 // src/integration/integration.ts
 export interface PlatformAPI {
-  saveWidgetConfig: (config: WidgetConfig) => Promise<void>;
+  saveWidgetConfig?: (config: WidgetConfig) => Promise<void>;
   sendWebSocket?: (message: any) => void;
   subscribeToMessages?: (callback: (message: any) => void) => () => void;
 }
@@ -15,6 +15,7 @@ export interface WidgetConfig {
     events?: any[];
     width?: number;
     height?: number;
+    isPinned?: boolean;
     [key: string]: any;
   };
   board: {
@@ -40,49 +41,51 @@ export interface CalendarNodeData {
   sendMessage?: (message: any) => void;
 }
 
-export const getInfo = (widgetInfo: WidgetConfig, platformAPI?: PlatformAPI): Record<string, any> => {
-  return {
+export const getInfo = (widgetInfo: WidgetConfig, platformAPI?: PlatformAPI): CalendarNodeData => {
+  const result: CalendarNodeData = {
     label: widgetInfo.config.label || 'Календарь',
     apiBaseUrl: widgetInfo.config.apiBaseUrl,
     events: widgetInfo.config.events || [],
     isPinned: widgetInfo.config.isPinned || false,
     widgetConfig: widgetInfo,
 
-    saveConfig: async (updatedConfig: Partial<WidgetConfig['config']>) => {
-      if (!platformAPI?.saveWidgetConfig) {
-        console.warn('Функция saveWidgetConfig не предоставлена платформой');
-        return;
-      }
-      
-      const fullConfig: WidgetConfig = {
-        ...widgetInfo,
-        config: {
-          ...widgetInfo.config,
-          ...updatedConfig
-        }
-      };
-      
-      try {
-        await platformAPI.saveWidgetConfig(fullConfig);
-        console.log('✅ Конфиг сохранен:', fullConfig);
-      } catch (error) {
-        console.error('❌ Ошибка сохранения конфига:', error);
-        throw error;
-      }
-    },
-    
+    // Пустые функции по умолчанию - они будут переопределены платформой
     onEventCreate: async (event: any) => {},
     
     onEventDelete: async (eventId: number) => {},
     
     onEventUpdate: async (eventId: number, event: any) => {},
     
-    onResize: (size: { width: number; height: number }) => {},
+    onResize: (width: number, height: number) => {},
     
-    onPinToggle: (isPinned: boolean) => {},
-
-    subscribe: platformAPI?.subscribeToMessages,
-    
-    sendMessage: platformAPI?.sendWebSocket,
+    onPinToggle: (isPinned: boolean) => {}
   };
+
+  // Добавляем опциональные функции только если они предоставлены платформой
+  if (platformAPI?.saveWidgetConfig) {
+    result.saveConfig = async (updatedConfig: Partial<WidgetConfig['config']>) => {
+      try {
+        const fullConfig: WidgetConfig = {
+          ...widgetInfo,
+          config: {
+            ...widgetInfo.config,
+            ...updatedConfig
+          }
+        };
+        await platformAPI.saveWidgetConfig!(fullConfig);
+      } catch (error) {
+        throw error;
+      }
+    };
+  }
+
+  if (platformAPI?.subscribeToMessages) {
+    result.subscribe = platformAPI.subscribeToMessages;
+  }
+
+  if (platformAPI?.sendWebSocket) {
+    result.sendMessage = platformAPI.sendWebSocket;
+  }
+
+  return result;
 };
