@@ -143,7 +143,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
       
       {selected && (
         <NodeResizer
-          minWidth={600}
+          minWidth={720}
           minHeight={500}
           maxWidth={1400}
           maxHeight={1000}

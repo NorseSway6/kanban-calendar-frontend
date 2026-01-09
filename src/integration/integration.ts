@@ -1,9 +1,6 @@
 // src/integration/integration.ts
-export interface PlatformAPI {
-  saveWidgetConfig?: (config: WidgetConfig) => Promise<void>;
-  sendWebSocket?: (message: any) => void;
-  subscribeToMessages?: (callback: (message: any) => void) => () => void;
-}
+import { createStandaloneCallbacks } from './standalone';
+import { createDefaultPlatformFunctions } from './defaultPlatform';
 
 export interface WidgetConfig {
   widgetId: number;
@@ -26,66 +23,53 @@ export interface WidgetConfig {
 }
 
 export interface CalendarNodeData {
+  // Основные данные
   label?: string;
   apiBaseUrl?: string;
   events?: any[];
   isPinned?: boolean;
   widgetConfig?: WidgetConfig;
+  
+  // Колбэки (всегда из standalone)
   onEventCreate?: (event: any) => Promise<void>;
   onEventDelete?: (eventId: number) => Promise<void>;
   onEventUpdate?: (eventId: number, event: any) => Promise<void>;
+  
+  // Функции платформы
   onResize?: (width: number, height: number) => void;
   onPinToggle?: (isPinned: boolean) => void;
   saveConfig?: (config: Partial<WidgetConfig['config']>) => Promise<void>;
   subscribe?: (callback: (message: any) => void) => () => void;
   sendMessage?: (message: any) => void;
+  
+  [key: string]: any;
 }
 
-export const getInfo = (widgetInfo: WidgetConfig, platformAPI?: PlatformAPI): CalendarNodeData => {
-  const result: CalendarNodeData = {
+// 🔧 Упрощенная версия - всегда используем standalone + дефолтные платформенные функции
+export const getInfo = (
+  widgetInfo: WidgetConfig
+): CalendarNodeData => {
+  const apiUrl = widgetInfo.config.apiBaseUrl || 'http://localhost:8080/api';
+  
+  // Всегда используем standalone для событий календаря
+  const calendarCallbacks = createStandaloneCallbacks(apiUrl);
+  
+  // Создаем дефолтные платформенные функции
+  const platformFunctions = createDefaultPlatformFunctions(widgetInfo.widgetId, widgetInfo);
+  
+  return {
     label: widgetInfo.config.label || 'Календарь',
-    apiBaseUrl: widgetInfo.config.apiBaseUrl,
+    apiBaseUrl: apiUrl,
     events: widgetInfo.config.events || [],
     isPinned: widgetInfo.config.isPinned || false,
     widgetConfig: widgetInfo,
-
-    // Пустые функции по умолчанию - они будут переопределены платформой
-    onEventCreate: async (event: any) => {},
     
-    onEventDelete: async (eventId: number) => {},
+    // События календаря - всегда из standalone
+    onEventCreate: calendarCallbacks.onEventCreate,
+    onEventDelete: calendarCallbacks.onEventDelete,
+    onEventUpdate: calendarCallbacks.onEventUpdate,
     
-    onEventUpdate: async (eventId: number, event: any) => {},
-    
-    onResize: (width: number, height: number) => {},
-    
-    onPinToggle: (isPinned: boolean) => {}
+    // Платформенные функции - всегда дефолтные
+    ...platformFunctions
   };
-
-  // Добавляем опциональные функции только если они предоставлены платформой
-  if (platformAPI?.saveWidgetConfig) {
-    result.saveConfig = async (updatedConfig: Partial<WidgetConfig['config']>) => {
-      try {
-        const fullConfig: WidgetConfig = {
-          ...widgetInfo,
-          config: {
-            ...widgetInfo.config,
-            ...updatedConfig
-          }
-        };
-        await platformAPI.saveWidgetConfig!(fullConfig);
-      } catch (error) {
-        throw error;
-      }
-    };
-  }
-
-  if (platformAPI?.subscribeToMessages) {
-    result.subscribe = platformAPI.subscribeToMessages;
-  }
-
-  if (platformAPI?.sendWebSocket) {
-    result.sendMessage = platformAPI.sendWebSocket;
-  }
-
-  return result;
 };

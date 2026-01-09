@@ -46,7 +46,7 @@ const buttonStyle = {
   padding: '8px 16px',
   backgroundColor: '#fff',
   border: '1px solid #ddd',
-  borderRadius: '4px',
+  borderRadius: '10px',
   cursor: 'pointer',
   fontSize: '14px',
   fontWeight: '500'
@@ -186,135 +186,61 @@ function App({
   
   // Обработчик создания задачи
   const handleTaskSubmit = async (taskData: TaskData) => {
-  try {
-    // Если передан колбэк от платформы, используем его
-    if (onEventCreate) {
-      console.log('🔄 Используем колбэк onEventCreate');
-      await onEventCreate(taskData);
-    } else {
-      // Иначе используем локальный API
-      const taskRequest: any = {
-        title: taskData.title,
-        description: taskData.description,
-        status: taskData.status || 'todo',
-        start_date: taskData.startDate.toISOString(),
-        priority: taskData.priority || 'medium',
-        assignee: taskData.assignee || ''
-      };
-
-      if (taskData.endDate) {
-        taskRequest.end_date = taskData.endDate.toISOString();
-        taskRequest.deadline = taskData.endDate.toISOString();
+    try {
+      if (!onEventCreate) {
+        throw new Error('Функция onEventCreate не предоставлена платформой');
       }
-
-      console.log('📤 Отправляем запрос на сервер:', taskRequest);
-      const response = await fetch(`${API_BASE_URL}/tasks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskRequest),
-      });
-
-      if (!response.ok) throw new Error('Ошибка создания задачи');
-      console.log('✅ Запрос успешен:', await response.json());
+      
+      console.log('🔄 Используем колбэк onEventCreate:', taskData);
+      await onEventCreate(taskData);
+      
+      await fetchEvents();
+      setShowTaskForm(false);
+      setSelectedDate(undefined);
+      
+      console.log('Задача успешно создана и отображена');
+    } catch (error) {
+      console.error('❌ Ошибка создания задачи:', error);
+      alert('Не удалось создать задачу. Проверьте консоль для подробностей.');
     }
+  };
 
-    // Отправляем уведомление через платформу
-    if (sendMessage) {
-      sendMessage({
-        type: 'EVENT_CREATE_NOTIFY',
-        event: taskData,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // ⭐ ВАЖНО: перезагружаем события после создания
-    await fetchEvents();
-    
-    setShowTaskForm(false);
-    setSelectedDate(undefined);
-    
-    console.log('Задача успешно создана и отображена');
-  } catch (error) {
-    console.error('❌ Ошибка создания задачи:', error);
-    alert('Не удалось создать задачу');
-  }
-};
-
-const handleDeleteTask = async (taskId: number) => {
-  try {
-    // Если передан колбэк от платформы, используем его
-    if (onEventDelete) {
+  const handleDeleteTask = async (taskId: number) => {
+    try {
+      if (!onEventDelete) {
+        throw new Error('Функция onEventDelete не предоставлена платформой');
+      }
+      
       console.log('🔄 Используем колбэк onEventDelete:', taskId);
       await onEventDelete(taskId);
-    } else {
-      // Иначе используем локальный API
-      console.log('📤 Отправляем DELETE запрос:', taskId);
-      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Ошибка удаления задачи');
-      console.log('✅ Удаление успешно');
+      
+      await fetchEvents();
+      setShowTaskDetails(false);
+      
+      console.log('Задача успешно удалена');
+    } catch (error) {
+      console.error('❌ Ошибка удаления задачи:', error);
+      alert('Не удалось удалить задачу');
     }
+  };
 
-    await fetchEvents(); // Перезагружаем события
-    setShowTaskDetails(false);
-    
-    console.log('Задача успешно удалена');
-  } catch (error) {
-    console.error('❌ Ошибка удаления задачи:', error);
-    alert('Не удалось удалить задачу');
-  }
-};
-
-const handleUpdateTask = async (taskId: number, updatedData: TaskData) => {
-  try {
-    // Если передан колбэк от платформы, используем его
-    if (onEventUpdate) {
+  const handleUpdateTask = async (taskId: number, updatedData: TaskData) => {
+    try {
+      if (!onEventUpdate) {
+        throw new Error('Функция onEventUpdate не предоставлена платформой');
+      }
+      
       console.log('🔄 Используем колбэк onEventUpdate:', taskId, updatedData);
       await onEventUpdate(taskId, updatedData);
-    } else {
-      // Иначе используем локальный API
-      const taskRequest: any = {
-        title: updatedData.title,
-        description: updatedData.description,
-        status: updatedData.status || 'todo',
-        start_date: updatedData.startDate.toISOString(),
-        priority: updatedData.priority || 'medium',
-        assignee: updatedData.assignee || ''
-      };
-
-      if (updatedData.endDate) {
-        taskRequest.end_date = updatedData.endDate.toISOString();
-        taskRequest.deadline = updatedData.endDate.toISOString();
-      } else {
-        taskRequest.end_date = null;
-        taskRequest.deadline = null;
-      }
-
-      console.log('📤 Отправляем PUT запрос:', taskId, taskRequest);
-      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskRequest),
-      });
-
-      if (!response.ok) throw new Error('Ошибка обновления задачи');
-      console.log('✅ Обновление успешно:', await response.json());
+      
+      await fetchEvents();
+      
+      console.log('Задача успешно обновлена');
+    } catch (error) {
+      console.error('❌ Ошибка обновления задачи:', error);
+      alert('Не удалось обновить задачу');
     }
-
-    await fetchEvents(); // Перезагружаем события
-    
-    console.log('Задача успешно обновлена');
-  } catch (error) {
-    console.error('❌ Ошибка обновления задачи:', error);
-    alert('Не удалось обновить задачу');
-  }
-};
+  };
 
   return (
     <div style={{ 
