@@ -96,8 +96,6 @@ function App({
         
         const data = await response.json();
         
-        console.log('Задачи с сервера:', data.tasks);
-        
         // Преобразуем задачи в события
         const formattedEvents = data.tasks.map((task: any) => {
           // Используем start_date для отображения

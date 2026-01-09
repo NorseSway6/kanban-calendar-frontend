@@ -29,36 +29,23 @@ export interface CalendarNodeData {
   onEventUpdate?: (eventId: number, event: any) => Promise<void>;
   onResize?: (width: number, height: number) => void;
   onPinToggle?: (isPinned: boolean) => void;
-  [key: string]: any; // Индексная сигнатура для совместимости
 }
 
 export const getInfo = (widgetInfo: WidgetConfig): Record<string, any> => {
-  console.log('Получена конфигурация виджета:', widgetInfo);
-  
   return {
     label: widgetInfo.config.label || 'Календарь',
     apiBaseUrl: widgetInfo.config.apiBaseUrl || 'http://localhost:8080/api',
     events: widgetInfo.config.events || [],
     widgetConfig: widgetInfo,
     
-    onEventCreate: async (event: any) => {
-      console.log('Создано событие:', event);
-    },
+    onEventCreate: async (event: any) => {},
     
-    onEventDelete: async (eventId: number) => {
-      console.log('Удалено событие:', eventId);
-    },
+    onEventDelete: async (eventId: number) => {},
     
-    onEventUpdate: async (eventId: number, event: any) => {
-      console.log('Обновлено событие:', eventId, event);
-    },
+    onEventUpdate: async (eventId: number, event: any) => {},
     
-    onResize: (size: { width: number; height: number }) => {
-      console.log('Изменен размер виджета:', size);
-    },
+    onResize: (size: { width: number; height: number }) => {},
     
-    onPinToggle: (isPinned: boolean) => {
-      console.log('Изменено закрепление:', isPinned);
-    }
+    onPinToggle: (isPinned: boolean) => {}
   };
 };

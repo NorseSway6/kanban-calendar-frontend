@@ -2,10 +2,11 @@
 import { Handle, Position, NodeResizer, useUpdateNodeInternals } from '@xyflow/react';
 import { useState, useCallback, useEffect } from 'react';
 import App from '../App';
+import { CalendarNodeData } from '../integration/integration';
 
 interface CalendarNodeProps {
   id: string;
-  data: Record<string, any>; // Изменено на Record<string, any>
+  data: CalendarNodeData; 
   selected?: boolean;
   isConnectable?: boolean;
 }
@@ -19,15 +20,9 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
   const [isPinned, setIsPinned] = useState(data.isPinned || false);
   const updateNodeInternals = useUpdateNodeInternals();
 
-  useEffect(() => {
-    if (data.widgetConfig) {
-      console.log('Виджет инициализирован с конфигурацией:', data.widgetConfig);
-    }
-  }, [data.widgetConfig]);
-
   const handleResize = useCallback((event: any, params: any) => {
     if (data.onResize) {
-      data.onResize({ width: params.width, height: params.height });
+      data.onResize(params.width, params.height );
     }
     
     updateNodeInternals(id);
@@ -38,7 +33,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
     setIsPinned(newPinnedState);
     
     if (data.onPinToggle) {
-      data.onPinToggle(newPinnedState, id);
+      data.onPinToggle(newPinnedState);
     }
   };
 
