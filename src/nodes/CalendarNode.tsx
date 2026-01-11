@@ -82,13 +82,23 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
 
   const handleResize = useCallback(async (event: any, params: any) => {
     setIsSaving(true);
+
     try {
+      const nodeUpdates = {
+        style: {
+          ...data.widgetConfig?.config.style,
+          width: params.width,
+          height: params.height
+        },
+        data: {
+          ...data.widgetConfig?.config.data,
+          width: params.width,
+          height: params.height
+        }
+      };
       // Сохраняем в конфиг через saveConfig
       if (data.saveConfig) {
-        data.saveConfig({ 
-          width: params.width, 
-          height: params.height 
-        })
+        data.saveConfig({nodeUpdates})
         .then(() => console.log('✅ Размер сохранен в конфиг'))
         .catch(error => console.error('❌ Ошибка сохранения конфига:', error))
         .finally(() => setIsSaving(false)); // 👈 Скрываем индикатор после сохранения
@@ -112,9 +122,16 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
     setIsSaving(true);
     
     try {
+      const nodeUpdates = {
+        data: {
+          ...data.widgetConfig?.config.data,
+          isPinned: newPinnedState
+        }
+      };
+
       // Сохраняем в конфиг через saveConfig
       if (data.saveConfig) {
-        await data.saveConfig({ isPinned: newPinnedState });
+        await data.saveConfig({nodeUpdates});
         console.log('✅ Состояние закрепления сохранено');
       }
       

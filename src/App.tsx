@@ -82,7 +82,6 @@ function App({
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showTaskDetails, setShowTaskDetails] = useState(false);
   const [lastMessageTime, setLastMessageTime] = useState<number>(0);
-  const MESSAGE_THROTTLE_MS = 1000; // 1 секунда между сообщениями
 
   useEffect(() => {
     fetchEvents();
@@ -158,13 +157,8 @@ function App({
     }
 
     const messageHandler = (message: any) => {
-      // Троттлинг: не обрабатываем сообщения чаще чем раз в секунду
       const now = Date.now();
-      if (now - lastMessageTime < MESSAGE_THROTTLE_MS) {
-        console.log('⚠️ Пропускаем сообщение (троттлинг)');
-        return;
-      }
-      
+
       setLastMessageTime(now);
       console.log('📨 App получил сообщение:', message.type);
       

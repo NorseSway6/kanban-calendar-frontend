@@ -1,20 +1,53 @@
 // src/integration/integration.ts
 import { createStandaloneCallbacks } from './standalone';
 import { createDefaultPlatformFunctions } from './defaultPlatform';
+import { Position } from '@xyflow/react';
 
+// Полная структура ноды, которую хранит платформа (как на фото)
+export interface FlowNode {
+  id: string;
+  type: string;
+  dragHandle?: string;
+  data: CalendarWidgetData;
+  position: { x: number; y: number };
+  sourcePosition?: Position;
+  targetPosition?: Position;
+  style: Record<string, any>;
+  selected?: boolean;
+  dragging?: boolean;
+  connectable?: boolean;
+  [key: string]: any;
+}
+
+// Кастомные данные вашего виджета (хранятся в data)
+export interface CalendarWidgetData {
+  // Основные поля
+  label?: string;
+  apiBaseUrl?: string;
+  platformApiUrl?: string;
+  
+  // Состояние виджета
+  isPinned?: boolean;
+  events?: any[];
+  currentView?: 'month' | 'week' | 'day' | 'agenda';
+  currentDate?: string;
+  
+  // Любые другие кастомные поля
+  width?: number;
+  height?: number;
+  showWeekends?: boolean;
+  showCompleted?: boolean;
+  widgetType?: 'calendar';
+  
+  [key: string]: any;
+}
+
+// Структура, которую получает виджет от платформы
 export interface WidgetConfig {
   widgetId: number;
   userId: number;
   role: string;
-  config: {
-    apiBaseUrl?: string;
-    label?: string;
-    events?: any[];
-    width?: number;
-    height?: number;
-    isPinned?: boolean;
-    [key: string]: any;
-  };
+  config: FlowNode;  // ВАЖНО: поле называется config, а не node
   board: {
     id: number;
     name: string;
@@ -22,46 +55,61 @@ export interface WidgetConfig {
   };
 }
 
+// Данные, которые передаются в CalendarNode (App компоненту)
 export interface CalendarNodeData {
-  // Основные данные
+  // Данные из config.data
   label?: string;
   apiBaseUrl?: string;
-  events?: any[];
+  platformApiUrl?: string;
   isPinned?: boolean;
+  events?: any[];
+  currentView?: string;
+  currentDate?: string;
+  
+  // Ссылка на весь конфиг
   widgetConfig?: WidgetConfig;
   
-  // Колбэки (всегда из standalone)
+  // Колбэки событий календаря (всегда из standalone)
   onEventCreate?: (event: any) => Promise<void>;
   onEventDelete?: (eventId: number) => Promise<void>;
   onEventUpdate?: (eventId: number, event: any) => Promise<void>;
   
-  // Функции платформы
-  onResize?: (width: number, height: number) => void;
-  onPinToggle?: (isPinned: boolean) => void;
-  saveConfig?: (config: Partial<WidgetConfig['config']>) => Promise<void>;
+  // Функции платформы (всегда дефолтные)
+  saveConfig?: (nodeUpdates: Partial<FlowNode>) => Promise<void>;
   subscribe?: (callback: (message: any) => void) => () => void;
   sendMessage?: (message: any) => void;
+  onResize?: (width: number, height: number) => void;
+  onPinToggle?: (isPinned: boolean) => void;
   
   [key: string]: any;
 }
 
-// 🔧 Упрощенная версия - всегда используем standalone + дефолтные платформенные функции
+// 🔧 Основная функция для получения данных виджета
 export const getInfo = (
   widgetInfo: WidgetConfig
 ): CalendarNodeData => {
-  const apiUrl = widgetInfo.config.apiBaseUrl || 'http://localhost:8080/api';
+  const apiUrl = widgetInfo.config.data?.apiBaseUrl || 'http://localhost:8080/api';
   
   // Всегда используем standalone для событий календаря
   const calendarCallbacks = createStandaloneCallbacks(apiUrl);
   
   // Создаем дефолтные платформенные функции
-  const platformFunctions = createDefaultPlatformFunctions(widgetInfo.widgetId, widgetInfo);
+  const platformFunctions = createDefaultPlatformFunctions(widgetInfo);
+  
+  // Извлекаем данные из config.data
+  const widgetData = widgetInfo.config.data || {};
   
   return {
-    label: widgetInfo.config.label || 'Календарь',
-    apiBaseUrl: apiUrl,
-    events: widgetInfo.config.events || [],
-    isPinned: widgetInfo.config.isPinned || false,
+    // Данные из config.data
+    label: widgetData.label || 'Календарь',
+    apiBaseUrl: widgetData.apiBaseUrl || apiUrl,
+    platformApiUrl: widgetData.platformApiUrl,
+    isPinned: widgetData.isPinned || false,
+    events: widgetData.events || [],
+    currentView: widgetData.currentView || 'month',
+    currentDate: widgetData.currentDate || new Date().toISOString(),
+    
+    // Сохраняем ссылку на весь конфиг
     widgetConfig: widgetInfo,
     
     // События календаря - всегда из standalone
