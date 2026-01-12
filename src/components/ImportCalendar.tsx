@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 
 interface ImportCalendarProps {
   apiBaseUrl: string;
-  onImportSuccess?: () => void;
+  onImportSuccess?: (importedCount: number) => void;
   onImportError?: (error: string) => void;
 }
 
@@ -48,7 +48,7 @@ const ImportCalendar: React.FC<ImportCalendarProps> = ({
         });
       }, 100);
 
-      const response = await fetch(`${apiBaseUrl}/tasks/import`, {
+            const response = await fetch(`${apiBaseUrl}/tasks/import`, {
         method: 'POST',
         body: formData,
       });
@@ -68,8 +68,8 @@ const ImportCalendar: React.FC<ImportCalendarProps> = ({
       if (result.imported === 0) {
         onImportError?.('Не удалось импортировать события. Возможно, они уже существуют или файл пуст.');
       } else {
-        onImportSuccess?.();
-        alert(`✅ Импортировано ${result.imported} событий`);
+        // Вызываем с количеством импортированных событий
+        onImportSuccess?.(result.imported);
       }
     } catch (error: any) {
       console.error('❌ Ошибка импорта календаря:', error);
@@ -77,7 +77,6 @@ const ImportCalendar: React.FC<ImportCalendarProps> = ({
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
-      // Сбрасываем input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }

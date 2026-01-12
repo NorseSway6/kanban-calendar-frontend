@@ -6,6 +6,7 @@ import TaskForm, { TaskData } from './components/TaskForm';
 import './App.css';
 import TaskDetails from './components/TaskDetails';
 import ImportCalendar from './components/ImportCalendar';
+import StatService from './services/StatService';
 
 const API_BASE_URL = 'http://localhost:8080/api'; // АДРЕС БЕКЕНДА КАЛЕНДАРЯ
 const TELEGRAM_BOT_URL = 'https://web.telegram.org/k/#@my_test_1234567890_bo_bot'; // ЗАМЕНИТЬ НА ССЫЛКУ СОЗДАННОГО БОТА
@@ -61,6 +62,7 @@ interface AppProps {
   onEventUpdate?: (eventId: number, event: any) => Promise<void>;
   subscribe?: (callback: (msg: any) => void) => () => void;
   sendMessage?: (msg: any) => void;
+  widgetConfig?: any;
 }
 
 // Основной компонент App
@@ -71,6 +73,7 @@ function App({
   onEventDelete,
   onEventUpdate,
   subscribe,
+  widgetConfig,
 }: AppProps) {
   // ВАЖНО: добавьте setEvents здесь!
   const [events, setEvents] = useState<any[]>(initialEvents);
@@ -82,6 +85,39 @@ function App({
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showTaskDetails, setShowTaskDetails] = useState(false);
   const [lastMessageTime, setLastMessageTime] = useState<number>(0);
+  
+  const statServiceRef = React.useRef<StatService | null>(null);
+
+  const widgetId = widgetConfig?.widgetId || 0;
+  const userId = widgetConfig?.userId || 0;
+  const statsModuleToken = widgetConfig?.config?.data?.statsModuleToken;
+
+  useEffect(() => {
+    if (statsModuleToken) {
+      statServiceRef.current = new StatService(statsModuleToken, widgetId, userId);
+      
+      // Отслеживаем загрузку виджета
+      statServiceRef.current.trackEvent('WIDGET_LOADED', {
+        view: currentView,
+        eventsCount: events.length
+      });
+    }
+    
+    return () => {
+      // Отправляем статистику при размонтировании
+      if (statServiceRef.current) {
+        statServiceRef.current.flushQueue();
+      }
+    };
+  }, [statsModuleToken, widgetId, userId]);
+
+  // Функция для отслеживания событий
+  const trackEvent = useCallback((eventType: string, metadata?: Record<string, any>) => {
+    if (statServiceRef.current) {
+      statServiceRef.current.trackEvent(eventType, metadata);
+      console.log(`📊 Отслежено событие: ${eventType}`, metadata);
+    }
+  }, []);
 
   useEffect(() => {
     fetchEvents();
@@ -252,15 +288,26 @@ function App({
     }
   };
 
-  const handleImportSuccess = () => {
+  const handleImportSuccess = useCallback((importedCount: number) => {
     console.log('Импорт календаря успешен, обновляю события...');
-    fetchEvents(); // Обновляем календарь
-  };
+    fetchEvents();
+    
+    // Отслеживаем событие импорта
+    trackEvent('CALENDAR_IMPORT', { 
+      importedCount,
+      timestamp: new Date().toISOString()
+    });
+    
+    alert(`✅ Импортировано ${importedCount} событий`);
+  }, [fetchEvents, trackEvent]);
 
-  const handleImportError = (error: string) => {
+  const handleImportError = useCallback((error: string) => {
     console.error('Ошибка импорта календаря:', error);
     alert(`Ошибка импорта: ${error}`);
-  };
+    
+    // Отслеживаем ошибку импорта
+    trackEvent('CALENDAR_IMPORT_ERROR', { error });
+  }, [trackEvent]);
 
 
   return (
@@ -347,6 +394,13 @@ function App({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="telegram-button"
+                  onClick={(e) => {
+                    // Отслеживаем клик
+                    trackEvent('TELEGRAM_CLICK', {
+                      url: TELEGRAM_BOT_URL,
+                      timestamp: new Date().toISOString()
+                    });
+                  }}
                 >
                   <svg width="35" height="35" viewBox="0 0 25 25" fill="currentColor">
                     <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.157l-1.895 8.863c-.127.585-.465.731-.942.455l-2.605-1.92-1.258 1.213c-.139.139-.256.256-.525.256l.188-2.665 4.838-4.37c.211-.188-.046-.292-.327-.104l-5.984 3.77-2.584-.805c-.564-.176-.576-.564.117-.844l10.1-3.883c.47-.176.882.104.728.844z"/>

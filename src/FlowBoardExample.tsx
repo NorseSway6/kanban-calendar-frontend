@@ -40,7 +40,8 @@ const createWidgetConfig = (
       events: [],
       currentView: 'month',
       currentDate: new Date().toISOString(),
-      widgetType: 'calendar'
+      widgetType: 'calendar',
+      statsModuleToken: 'demo_token_123'
     },
     position: { x: 100, y: 100 },
     sourcePosition: Position.Right,

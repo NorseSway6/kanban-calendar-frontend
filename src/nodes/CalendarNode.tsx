@@ -218,6 +218,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
           onEventUpdate={data.onEventUpdate}
           subscribe={data.subscribe}
           sendMessage={data.sendMessage}
+          widgetConfig={data.widgetConfig}
         />
       </div>
     </div>

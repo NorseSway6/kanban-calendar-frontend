@@ -46,6 +46,8 @@ export interface CalendarWidgetData {
   showWeekends?: boolean;
   showCompleted?: boolean;
   widgetType?: 'calendar';
+
+  statsModuleToken?: string;
   
   [key: string]: any;
 }
