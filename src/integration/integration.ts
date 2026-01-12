@@ -3,7 +3,18 @@ import { createStandaloneCallbacks } from './standalone';
 import { createDefaultPlatformFunctions } from './defaultPlatform';
 import { Position } from '@xyflow/react';
 
-// Полная структура ноды, которую хранит платформа (как на фото)
+// Полная структура ноды, которую хранит платформа
+// src/integration/integration.ts
+export interface FlowNodeStyle {
+  display?: string;
+  justifyContent?: string;
+  color?: string;
+  fontSize?: string;
+  fontWeight?: string;
+  background?: string;
+  [key: string]: any;
+}
+
 export interface FlowNode {
   id: string;
   type: string;
@@ -12,14 +23,11 @@ export interface FlowNode {
   position: { x: number; y: number };
   sourcePosition?: Position;
   targetPosition?: Position;
-  style: Record<string, any>;
-  selected?: boolean;
-  dragging?: boolean;
-  connectable?: boolean;
+  style: FlowNodeStyle;
   [key: string]: any;
 }
 
-// Кастомные данные вашего виджета (хранятся в data)
+// Кастомные данные вашего виджета
 export interface CalendarWidgetData {
   // Основные поля
   label?: string;
@@ -47,7 +55,7 @@ export interface WidgetConfig {
   widgetId: number;
   userId: number;
   role: string;
-  config: FlowNode;  // ВАЖНО: поле называется config, а не node
+  config: FlowNode;
   board: {
     id: number;
     name: string;

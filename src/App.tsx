@@ -5,6 +5,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import TaskForm, { TaskData } from './components/TaskForm';
 import './App.css';
 import TaskDetails from './components/TaskDetails';
+import ImportCalendar from './components/ImportCalendar';
 
 const API_BASE_URL = 'http://localhost:8080/api'; // АДРЕС БЕКЕНДА КАЛЕНДАРЯ
 const TELEGRAM_BOT_URL = 'https://web.telegram.org/k/#@my_test_1234567890_bo_bot'; // ЗАМЕНИТЬ НА ССЫЛКУ СОЗДАННОГО БОТА
@@ -70,11 +71,10 @@ function App({
   onEventDelete,
   onEventUpdate,
   subscribe,
-  sendMessage,
 }: AppProps) {
   // ВАЖНО: добавьте setEvents здесь!
   const [events, setEvents] = useState<any[]>(initialEvents);
-  const [loading, setLoading] = useState(true);
+  const [_, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('month');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -124,6 +124,22 @@ function App({
             displayEnd = new Date(startDate.getTime() + 60 * 60 * 1000);
           }
           
+          // Определяем цвет по статусу (а не по наличию дедлайна)
+          let color: string;
+          switch (task.status) {
+            case 'todo':
+              color = '#3174ad'; // Красный
+              break;
+            case 'in_progress':
+              color = '#ffc107'; // Желтый
+              break;
+            case 'done':
+              color = '#28a745'; // Зеленый
+              break;
+            default:
+              color = '#dc3545'; // Синий по умолчанию
+          }
+          
           return {
             id: task.id,
             title: task.title,
@@ -132,7 +148,7 @@ function App({
             allDay: allDay,
             status: task.status,
             description: task.description,
-            color: hasDeadline ? '#dc3545' : '#3174ad', // Красный для задач с дедлайном
+            color: color, // Цвет по статусу
             resource: task
           };
         });
@@ -236,6 +252,17 @@ function App({
     }
   };
 
+  const handleImportSuccess = () => {
+    console.log('Импорт календаря успешен, обновляю события...');
+    fetchEvents(); // Обновляем календарь
+  };
+
+  const handleImportError = (error: string) => {
+    console.error('Ошибка импорта календаря:', error);
+    alert(`Ошибка импорта: ${error}`);
+  };
+
+
   return (
     <div style={{ 
       display: 'flex', 
@@ -306,17 +333,26 @@ function App({
 
               {/* Кнопка Telegram бота */}
               <div className="sidebar-bottom">
-              <a
-                href={TELEGRAM_BOT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="telegram-button"
-              >
-                <svg width="35" height="35" viewBox="0 0 25 25" fill="currentColor">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.157l-1.895 8.863c-.127.585-.465.731-.942.455l-2.605-1.92-1.258 1.213c-.139.139-.256.256-.525.256l.188-2.665 4.838-4.37c.211-.188-.046-.292-.327-.104l-5.984 3.77-2.584-.805c-.564-.176-.576-.564.117-.844l10.1-3.883c.47-.176.882.104.728.844z"/>
-                </svg>
-                Напомнить о дедлайне
-              </a>
+                 <div style={{ 
+                    marginTop: '20px',
+                  }}>
+                    <ImportCalendar 
+                      apiBaseUrl={apiBaseUrl}
+                      onImportSuccess={handleImportSuccess}
+                      onImportError={handleImportError}
+                    />
+                  </div>
+                <a
+                  href={TELEGRAM_BOT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="telegram-button"
+                >
+                  <svg width="35" height="35" viewBox="0 0 25 25" fill="currentColor">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.157l-1.895 8.863c-.127.585-.465.731-.942.455l-2.605-1.92-1.258 1.213c-.139.139-.256.256-.525.256l.188-2.665 4.838-4.37c.211-.188-.046-.292-.327-.104l-5.984 3.77-2.584-.805c-.564-.176-.576-.564.117-.844l10.1-3.883c.47-.176.882.104.728.844z"/>
+                  </svg>
+                  Напомнить о дедлайне
+                </a>
               </div>
       </div>
 

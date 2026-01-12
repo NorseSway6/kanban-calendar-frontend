@@ -54,8 +54,6 @@ const createWidgetConfig = (
       fontSize: '16px',
       fontWeight: 'bold',
       background: '#fff',
-      borderRadius: '8px',
-      border: '2px solid #e5e7eb'
     }
   },
   board: {
