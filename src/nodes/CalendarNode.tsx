@@ -1,110 +1,168 @@
 // src/nodes/CalendarNode.tsx
-import { Handle, Position, NodeResizer, useUpdateNodeInternals } from '@xyflow/react';
-import { useState, useCallback, useEffect } from 'react';
+import { Handle, Position, NodeResizer, useUpdateNodeInternals, NodeProps } from '@xyflow/react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import App from '../App';
-import { CalendarNodeData } from '../integration/integration';
+import { CalendarNodeData, getInfo, FlowNodeUpdate } from '../integration/integration';
 
 interface CalendarNodeProps {
   id: string;
   data: CalendarNodeData; 
   selected?: boolean;
   isConnectable?: boolean;
+  // Эти пропсы автоматически передаются React Flow при перетаскивании
+  xPos?: number;
+  yPos?: number;
+  dragging?: boolean;
 }
 
 const CalendarNode: React.FC<CalendarNodeProps> = ({ 
   id, 
   data, 
   selected = false, 
-  isConnectable = true 
+  isConnectable = true,
+  xPos,
+  yPos,
+  dragging
 }) => {
   const [isPinned, setIsPinned] = useState(data.isPinned || false);
   const [isSaving, setIsSaving] = useState(false);
+  const [position, setPosition] = useState({ x: xPos || 0, y: yPos || 0 });
+  const [wasDragging, setWasDragging] = useState(false);
   const updateNodeInternals = useUpdateNodeInternals();
-  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Проверяем, есть ли функция подписки
-    if (!data.subscribe) {
-      console.log('⚠️ subscribe не доступен');
-      return;
-    }
-
-    // Если уже подписаны - выходим
-    if (subscriptionId) {
-      console.log('⚠️ Уже подписаны');
-      return;
-    }
-
-    console.log('📡 Начинаем подписку...');
+  
+  // Используем useRef для хранения appData
+  const appDataRef = useRef<CalendarNodeData | null>(null);
+  
+  if (!appDataRef.current) {
+    console.log('🔧 [CalendarNode] getInfo вызывается при создании виджета:', data.widgetConfig?.widgetId);
     
-    const messageHandler = (message: any) => {
-      // Фильтруем сообщения по widgetId если он есть
-      if (message.widgetId && data.widgetConfig?.widgetId) {
-        if (message.widgetId !== data.widgetConfig.widgetId) {
-          return; // Пропускаем сообщения для других виджетов
-        }
-      }
-      
-      console.log('📨 Получено сообщение для виджета:', data.widgetConfig?.widgetId, message);
-      
+    if (data.widgetConfig) {
+      appDataRef.current = getInfo(data.widgetConfig);
+    } else {
+      appDataRef.current = data;
+    }
+  }
+  
+  const appData = appDataRef.current;
+
+  // Отслеживаем изменение позиции
+  useEffect(() => {
+    if (xPos !== undefined && yPos !== undefined) {
+      setPosition({ x: xPos, y: yPos });
+    }
+  }, [xPos, yPos]);
+
+  // Отслеживаем окончание перетаскивания и сохраняем позицию
+  useEffect(() => {
+    // Если было перетаскивание и сейчас оно закончилось
+    if (wasDragging && !dragging) {
+      savePosition(position);
+    }
+    
+    // Обновляем состояние перетаскивания
+    if (dragging !== undefined) {
+      setWasDragging(dragging);
+    }
+  }, [dragging, wasDragging, position]);
+
+  // Эффект для синхронизации isPinned
+  useEffect(() => {
+    if (appData.isPinned !== undefined && appData.isPinned !== isPinned) {
+      setIsPinned(appData.isPinned);
+    }
+  }, [appData.isPinned]);
+
+  // Функция сохранения позиции
+  const savePosition = useCallback(async (newPosition: { x: number; y: number }) => {
+    if (isPinned) {
+      console.log('⚠️ Виджет закреплен, позиция не сохраняется');
+      return;
+    }
+
+    console.log('📍 CalendarNode сохраняет позицию:', id, newPosition);
+    
+    if (!appData.saveConfig) {
+      console.error('❌ saveConfig не доступен в appData');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const nodeUpdates: FlowNodeUpdate = {
+        position: newPosition
+      };
+
+      await appData.saveConfig({nodeUpdates});
+      console.log('✅ Позиция сохранена');
+    } catch (error) {
+      console.error('❌ Ошибка сохранения позиции:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [id, isPinned, appData]);
+
+  // Подписка на сообщения
+  useEffect(() => {
+    if (!appData.subscribe) return;
+
+    const unsubscribe = appData.subscribe((message) => {
       switch (message.type) {
         case 'WIDGET_PINNED':
-          if (message.isPinned !== isPinned) {
-            console.log('Обновление состояния закрепления:', message.isPinned);
+          if (message.widgetId === appData.widgetConfig?.widgetId) {
             setIsPinned(message.isPinned);
           }
           break;
-        case 'SYSTEM_MESSAGE':
-          console.log('Системное сообщение:', message.message);
-          break;
-        case 'EVENT_CREATED':
-          console.log('Событие создано другим пользователем');
-          // Можно добавить обновление календаря
-          break;
       }
-    };
+    });
 
-    // Подписываемся
-    const unsubscribe = data.subscribe(messageHandler);
+    return () => unsubscribe();
+  }, [appData.subscribe, appData.widgetConfig?.widgetId]);
+
+  const togglePin = useCallback(async () => {
+    const newPinnedState = !isPinned;
+    console.log('📌 Изменение закрепления:', newPinnedState);
     
-    // Генерируем ID подписки для отслеживания
-    const subId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setSubscriptionId(subId);
-    console.log('✅ Подписка создана:', subId);
+    if (!appData.saveConfig) {
+      console.error('❌ saveConfig не доступен');
+      return;
+    }
 
-    // Отписка при размонтировании
-    return () => {
-      console.log('🗑️ Отписываемся:', subId);
-      unsubscribe();
-      setSubscriptionId(null);
-    };
-  }, [data.subscribe, data.widgetConfig?.widgetId, isPinned]);
+    setIsSaving(true);
+    try {
+      const nodeUpdates: FlowNodeUpdate = {
+        data: { isPinned: newPinnedState }
+      };
+
+      await appData.saveConfig({nodeUpdates});
+      console.log('✅ Состояние закрепления сохранено');
+      setIsPinned(newPinnedState);
+      
+      if (data.onPinToggle) {
+        data.onPinToggle(newPinnedState);
+      }
+    } catch (error) {
+      console.error('❌ Ошибка сохранения закрепления:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isPinned, appData, data]);
 
   const handleResize = useCallback(async (event: any, params: any) => {
-    setIsSaving(true);
+    if (!appData.saveConfig) {
+      console.error('❌ saveConfig не доступен');
+      return;
+    }
 
+    setIsSaving(true);
     try {
-      const nodeUpdates = {
-        style: {
-          ...data.widgetConfig?.config.style,
-          width: params.width,
-          height: params.height
-        },
-        data: {
-          ...data.widgetConfig?.config.data,
-          width: params.width,
-          height: params.height
-        }
+      const nodeUpdates: FlowNodeUpdate = {
+        style: { width: params.width, height: params.height },
+        data: { width: params.width, height: params.height }
       };
-      // Сохраняем в конфиг через saveConfig
-      if (data.saveConfig) {
-        data.saveConfig({nodeUpdates})
-        .then(() => console.log('✅ Размер сохранен в конфиг'))
-        .catch(error => console.error('❌ Ошибка сохранения конфига:', error))
-        .finally(() => setIsSaving(false)); // 👈 Скрываем индикатор после сохранения
-      }
+
+      await appData.saveConfig({nodeUpdates});
+      console.log('✅ Размер сохранен');
       
-      // Вызываем колбэк платформы
       if (data.onResize) {
         data.onResize(params.width, params.height);
       }
@@ -114,43 +172,13 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
       setIsSaving(false);
       updateNodeInternals(id);
     }
-  }, [data, id, updateNodeInternals]);
-
-  const togglePin = async () => {
-    const newPinnedState = !isPinned;
-    setIsPinned(newPinnedState);
-    setIsSaving(true);
-    
-    try {
-      const nodeUpdates = {
-        data: {
-          ...data.widgetConfig?.config.data,
-          isPinned: newPinnedState
-        }
-      };
-
-      // Сохраняем в конфиг через saveConfig
-      if (data.saveConfig) {
-        await data.saveConfig({nodeUpdates});
-        console.log('✅ Состояние закрепления сохранено');
-      }
-      
-      // Вызываем колбэк платформы
-      if (data.onPinToggle) {
-        data.onPinToggle(newPinnedState);
-      }
-    } catch (error) {
-      console.error('❌ Ошибка сохранения закрепления:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  }, [appData, data, id, updateNodeInternals]);
 
   return (
     <div 
       className={`relative bg-white border-2 rounded-lg shadow-lg ${
         selected ? 'border-blue-500' : 'border-gray-200'
-      }`}
+      } ${dragging ? 'opacity-80' : ''}`}
       style={{
         width: '100%',
         height: '100%',
@@ -161,7 +189,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
       {selected && (
         <NodeResizer
           minWidth={720}
-          minHeight={500}
+          minHeight={590}
           maxWidth={1400}
           maxHeight={1000}
           lineClassName="border-blue-400"
@@ -182,7 +210,9 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
         />
         
         <div className="flex items-center gap-4">
-          <span className="text-sm font-bold text-gray-800"> 📅 Календарь </span>
+          <span className="text-sm font-bold text-gray-800">
+            📅 {appData.label || 'Календарь'}
+          </span>
           <button
             onClick={togglePin}
             className={`p-1.5 rounded-full transition-colors ${
@@ -191,9 +221,13 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
                 : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
             }`}
             title={isPinned ? "Открепить" : "Закрепить"}
+            disabled={isSaving}
           >
             {isPinned ? '📌' : '📍'}
           </button>
+          {isSaving && (
+            <span className="text-xs text-gray-500 animate-pulse">Сохранение...</span>
+          )}
         </div>
         
         <Handle
@@ -211,14 +245,14 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
         padding: '4px'
       }}>
         <App 
-          apiBaseUrl={data.apiBaseUrl}
-          initialEvents={data.events}
-          onEventCreate={data.onEventCreate}
-          onEventDelete={data.onEventDelete}
-          onEventUpdate={data.onEventUpdate}
-          subscribe={data.subscribe}
-          sendMessage={data.sendMessage}
-          widgetConfig={data.widgetConfig}
+          apiBaseUrl={appData.apiBaseUrl}
+          initialEvents={appData.events}
+          onEventCreate={appData.onEventCreate}
+          onEventDelete={appData.onEventDelete}
+          onEventUpdate={appData.onEventUpdate}
+          subscribe={appData.subscribe}
+          sendMessage={appData.sendMessage}
+          widgetConfig={appData.widgetConfig}
         />
       </div>
     </div>

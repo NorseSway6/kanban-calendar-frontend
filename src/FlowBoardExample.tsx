@@ -12,13 +12,19 @@ import {
 import { useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import CalendarNode from './nodes/CalendarNode';
-import { WidgetConfig, CalendarNodeData, getInfo } from './integration/integration';
+import { CalendarNodeData, WidgetConfig } from './integration/integration';
 import { defaultBroadcastMessage } from './integration/defaultPlatform';
+import { calendarConfig, initCalendarConfig } from './config';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+initCalendarConfig({
+  apiBaseUrl: 'http://localhost:8080/api', // Ваш тестовый бэкенд
+  telegramBotUrl: 'https://t.me/your_test_bot', // Тестовый бот
+  statsQueueMaxSize: 2,
+  platformApiUrl: 'http://localhost:3000/api' // Если тестируете интеграцию с платформой
+});
 
-// Создание конфига виджета с полной нодой
-const createWidgetConfig = (
+// Создание демо-конфига виджета
+const createDemoWidgetConfig = (
   widgetId: number, 
   label: string, 
   width: number = 900, 
@@ -34,8 +40,8 @@ const createWidgetConfig = (
     dragHandle: 'dragHandle_custom',
     data: {
       label,
-      apiBaseUrl: API_BASE_URL,
-      platformApiUrl: API_BASE_URL,
+      apiBaseUrl: calendarConfig.apiBaseUrl, // Используем из конфига
+      platformApiUrl: calendarConfig.platformApiUrl,
       isPinned,
       events: [],
       currentView: 'month',
@@ -71,20 +77,19 @@ const nodeTypes = {
 // Создание начальной ноды
 const getInitialNode = (): Node => {
   const widgetId = 1;
-  const widgetConfig = createWidgetConfig(widgetId, 'Календарь задач', 900, 700, false);
-  
-  // Получаем данные виджета
-  const widgetData = getInfo(widgetConfig);
+  const widgetConfig = createDemoWidgetConfig(widgetId, 'Календарь задач', 900, 700, false);
   
   return {
     id: `calendar-${widgetId}`,
     type: 'calendarNode',
-    position: widgetConfig.config.position,  // ВАЖНО: widgetConfig.config
-    data: widgetData as Record<string, unknown>,
-    style: widgetConfig.config.style,  // ВАЖНО: widgetConfig.config
-    draggable: !widgetConfig.config.data.isPinned,  // ВАЖНО: widgetConfig.config
-    sourcePosition: widgetConfig.config.sourcePosition,  // ВАЖНО: widgetConfig.config
-    targetPosition: widgetConfig.config.targetPosition,  // ВАЖНО: widgetConfig.config
+    position: widgetConfig.config.position,
+    data: { 
+      widgetConfig,
+    } as Record<string, unknown>,
+    style: widgetConfig.config.style,
+    draggable: !widgetConfig.config.data.isPinned,
+    sourcePosition: widgetConfig.config.sourcePosition,
+    targetPosition: widgetConfig.config.targetPosition,
   };
 };
 
@@ -95,44 +100,14 @@ function FlowBoard() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Обработчик остановки перетаскивания (сохраняем позицию)
-  const onNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
-    const nodeData = node.data as CalendarNodeData;
-    
-    if (nodeData.saveConfig) {
-      console.log('📍 Сохраняем позицию виджета:', node.id, node.position);
-      
-      nodeData.saveConfig({
-        position: node.position
-      });
-    }
-  }, []);
-
-  // Обновление закрепления (с исправлением)
+  // Обновление закрепления (только для демо-интерфейса)
   const updateNodePin = useCallback((nodeId: string, isPinned: boolean) => {
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
-          const data = node.data as CalendarNodeData;
-          
-          // Обновляем React Flow ноду
           return {
             ...node,
-            draggable: !isPinned, // Закрепленный виджет нельзя двигать
-            data: {
-              ...data,
-              isPinned, // Обновляем в data виджета
-              widgetConfig: data.widgetConfig ? {
-                ...data.widgetConfig,
-                config: {
-                  ...data.widgetConfig.config,
-                  data: {
-                    ...data.widgetConfig.config.data,
-                    isPinned // Обновляем в конфиге
-                  }
-                }
-              } : undefined
-            }
+            draggable: !isPinned,
           };
         }
         return node;
@@ -140,13 +115,11 @@ function FlowBoard() {
     );
   }, [setNodes]);
 
-  // Обновление размера (с исправлением)
+  // Обновление размера (только для демо-интерфейса)
   const updateNodeSize = useCallback((nodeId: string, width: number, height: number) => {
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
-          const data = node.data as CalendarNodeData;
-          
           return {
             ...node,
             style: { 
@@ -154,25 +127,6 @@ function FlowBoard() {
               width, 
               height 
             },
-            data: {
-              ...data,
-              widgetConfig: data.widgetConfig ? {
-                ...data.widgetConfig,
-                config: {
-                  ...data.widgetConfig.config,
-                  style: {
-                    ...data.widgetConfig.config.style,
-                    width,
-                    height
-                  },
-                  data: {
-                    ...data.widgetConfig.config.data,
-                    width,
-                    height
-                  }
-                }
-              } : undefined
-            }
           };
         }
         return node;
@@ -180,20 +134,17 @@ function FlowBoard() {
     );
   }, [setNodes]);
 
-  // Добавляем функции для обновления интерфейса React Flow
+  // Добавляем колбэки для демо-интерфейса
   const nodesWithCallbacks = useMemo(() => {
     return nodes.map((node) => {
-      const data = node.data as CalendarNodeData;
+      const data = node.data as { widgetConfig: WidgetConfig };
       
-      const updatedData: CalendarNodeData = {
+      const updatedData = {
         ...data,
-        // Переопределяем onResize и onPinToggle
         onResize: (width: number, height: number) => {
-          data.onResize?.(width, height);
           updateNodeSize(node.id, width, height);
         },
         onPinToggle: (isPinned: boolean) => {
-          data.onPinToggle?.(isPinned);
           updateNodePin(node.id, isPinned);
         }
       };
@@ -208,16 +159,15 @@ function FlowBoard() {
   // Добавление нового виджета
   const addNewWidget = useCallback(() => {
     const widgetId = Date.now();
-    const widgetConfig = createWidgetConfig(widgetId, `Календарь #${widgetId}`);
-    
-    // Получаем данные виджета
-    const widgetData = getInfo(widgetConfig);
+    const widgetConfig = createDemoWidgetConfig(widgetId, `Календарь #${widgetId}`);
     
     const newNode: Node = {
       id: `calendar-${widgetId}`,
       type: 'calendarNode',
       position: widgetConfig.config.position,
-      data: widgetData as Record<string, unknown>,
+      data: { 
+        widgetConfig,
+      } as Record<string, unknown>,
       style: widgetConfig.config.style,
       draggable: !widgetConfig.config.data.isPinned,
       sourcePosition: widgetConfig.config.sourcePosition,
@@ -287,7 +237,6 @@ function FlowBoard() {
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onNodeDragStop={onNodeDragStop}
           fitView
         >
           <Background />

@@ -7,9 +7,10 @@ import './App.css';
 import TaskDetails from './components/TaskDetails';
 import ImportCalendar from './components/ImportCalendar';
 import StatService from './services/StatService';
+import { calendarConfig } from './config';
 
-const API_BASE_URL = 'http://localhost:8080/api'; // АДРЕС БЕКЕНДА КАЛЕНДАРЯ
-const TELEGRAM_BOT_URL = 'https://web.telegram.org/k/#@my_test_1234567890_bo_bot'; // ЗАМЕНИТЬ НА ССЫЛКУ СОЗДАННОГО БОТА
+const API_BASE_URL = calendarConfig.apiBaseUrl;
+const TELEGRAM_BOT_URL = calendarConfig.telegramBotUrl;
 
 // Кастомный Toolbar
 const CustomToolbar: React.FC<any> = ({ label, onNavigate }) => {

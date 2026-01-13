@@ -1,3 +1,4 @@
+import { calendarConfig } from '../config';
 // src/services/StatService.ts
 interface StatEvent {
   type: string;
@@ -17,7 +18,7 @@ class StatService {
   
   // Храним последние события для отправки порциями
   private eventsQueue: StatEvent[] = [];
-  private readonly MAX_QUEUE_SIZE = 2; // Уменьшим для демонстрации (можно поставить 50)
+  private readonly MAX_QUEUE_SIZE = calendarConfig.statsQueueMaxSize;
   
   // Флаг, чтобы избежать множественной отправки
   private isSending: boolean = false;

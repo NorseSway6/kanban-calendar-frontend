@@ -1,11 +1,10 @@
 // src/integration/defaultPlatform.ts
-import { WidgetConfig, FlowNode, CalendarWidgetData } from './integration';
+import { WidgetConfig, FlowNode, CalendarWidgetData, FlowNodeUpdate } from './integration';
 
 // Простой EventEmitter для подписок
 class DefaultEventEmitter {
   private listeners: Map<string, Set<(message: any) => void>> = new Map();
 
-  // Подписка на сообщения для конкретного виджета
   subscribe(widgetId: string, callback: (message: any) => void): () => void {
     if (!this.listeners.has(widgetId)) {
       this.listeners.set(widgetId, new Set());
@@ -23,7 +22,6 @@ class DefaultEventEmitter {
     };
   }
 
-  // Отправка сообщения конкретному виджету
   sendMessage(widgetId: string, message: any) {
     const widgetListeners = this.listeners.get(widgetId);
     if (widgetListeners) {
@@ -31,7 +29,6 @@ class DefaultEventEmitter {
     }
   }
 
-  // Рассылка сообщения всем виджетам
   broadcast(message: any) {
     this.listeners.forEach(listeners => {
       listeners.forEach(callback => callback(message));
@@ -39,7 +36,6 @@ class DefaultEventEmitter {
   }
 }
 
-// Глобальный экземпляр для standalone режима
 const defaultEventEmitter = new DefaultEventEmitter();
 
 /**
@@ -49,15 +45,21 @@ const defaultEventEmitter = new DefaultEventEmitter();
  */
 export const defaultSaveConfig = async (
   widgetConfig: WidgetConfig,
-  nodeUpdates: Partial<FlowNode>
+  nodeUpdates: FlowNodeUpdate
 ): Promise<void> => {
   console.log('💾 [Default] Сохраняем конфиг для виджета', widgetConfig.widgetId, nodeUpdates);
   
   // 1. Создаем обновленную ноду (глубокое слияние)
   const updatedNode: FlowNode = {
     ...widgetConfig.config,
-    ...nodeUpdates,
-    // Глубокое слияние для вложенных объектов
+    // Основные поля
+    ...(nodeUpdates.id && { id: nodeUpdates.id }),
+    ...(nodeUpdates.type && { type: nodeUpdates.type }),
+    ...(nodeUpdates.dragHandle && { dragHandle: nodeUpdates.dragHandle }),
+    ...(nodeUpdates.sourcePosition && { sourcePosition: nodeUpdates.sourcePosition }),
+    ...(nodeUpdates.targetPosition && { targetPosition: nodeUpdates.targetPosition }),
+    
+    // Вложенные объекты
     data: {
       ...widgetConfig.config.data,
       ...(nodeUpdates.data || {})
@@ -85,30 +87,56 @@ export const defaultSaveConfig = async (
   if (platformApiUrl) {
     console.log(`📤 Отправляем конфиг на платформу: ${platformApiUrl}/widget/${widgetConfig.widgetId}`);
     
-    // ЗАКОММЕНТИРОВАНО для демо-режима. В реальной интеграции раскомментировать:
-    /*
-    try {
-      const response = await fetch(`${platformApiUrl}/widget/${widgetConfig.widgetId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedNode),
-      });
+    // try {
+    //   const response = await fetch(`${platformApiUrl}/widget/${widgetConfig.widgetId}`, {
+    //     method: 'PUT',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({
+    //       config: updatedNode,  // Отправляем всю ноду
+    //       board: widgetConfig.board,
+    //       userId: widgetConfig.userId,
+    //       role: widgetConfig.role
+    //     }),
+    //   });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Ошибка сохранения конфига: ${response.status} ${errorText}`);
-      }
+    //   if (!response.ok) {
+    //     const errorText = await response.text();
+    //     throw new Error(`Ошибка сохранения конфига: ${response.status} ${errorText}`);
+    //   }
       
-      console.log('✅ Конфиг успешно отправлен на платформу');
-    } catch (error) {
-      console.error('❌ Ошибка отправки ноды на платформу:', error);
-      throw error;
-    }
-    */
+    //   console.log('✅ Конфиг успешно отправлен на платформу');
+    // } catch (error) {
+    //   console.error('❌ Ошибка отправки ноды на платформу:', error);
+    //   // Не бросаем ошибку дальше, чтобы не ломать UX
+    //   // В реальной платформе здесь должна быть обработка ошибок
+    //   console.log('⚠️ Продолжаем работу в offline режиме');
+    // }
   } else {
     console.log('🔄 Конфиг сохранен локально (platformApiUrl не указан)');
   }
+
+  // 5. Отправляем системные сообщения о изменениях
+  if (nodeUpdates.position) {
+    console.log('📍 Отправляем POSITION_UPDATED для виджета:', widgetConfig.widgetId);
+    defaultBroadcastMessage({
+      type: 'POSITION_UPDATED',
+      widgetId: widgetConfig.widgetId,
+      position: nodeUpdates.position,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  if (nodeUpdates.data?.isPinned !== undefined) {
+    console.log('📌 Отправляем WIDGET_PINNED для виджета:', widgetConfig.widgetId);
+    defaultBroadcastMessage({
+      type: 'WIDGET_PINNED',
+      widgetId: widgetConfig.widgetId,
+      isPinned: nodeUpdates.data.isPinned,
+      timestamp: new Date().toISOString()
+    });
+  }
 };
+
 
 // Дефолтная подписка на сообщения
 export const defaultSubscribe = (widgetId: string, callback: (message: any) => void) => {
@@ -140,8 +168,8 @@ export const defaultOnPinToggle = (isPinned: boolean) => {
  * @param widgetConfig - полный конфиг виджета
  */
 export const createDefaultPlatformFunctions = (widgetConfig: WidgetConfig) => {
-  // Функция сохранения конфига
-  const saveConfig = async (nodeUpdates: Partial<FlowNode>) => {
+  // Функция сохранения конфига - используем FlowNodeUpdate
+  const saveConfig = async (nodeUpdates: FlowNodeUpdate) => {
     try {
       // Сохраняем в дефолтную систему
       await defaultSaveConfig(widgetConfig, nodeUpdates);
