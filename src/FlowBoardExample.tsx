@@ -11,10 +11,14 @@ import {
 } from '@xyflow/react';
 import { useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import CalendarNode from './nodes/CalendarNode';
-import { CalendarNodeData, WidgetConfig } from './integration/integration';
-import { defaultBroadcastMessage } from './integration/defaultPlatform';
-import { calendarConfig, initCalendarConfig } from './config';
+import { 
+  CalendarNode, 
+  initCalendarConfig, 
+  defaultBroadcastMessage,
+  type CalendarNodeData,
+  type WidgetConfig, 
+  calendarConfig
+} from 'calendar-module';
 
 initCalendarConfig({
   apiBaseUrl: 'http://localhost:8080/api', // Ваш тестовый бэкенд
@@ -116,23 +120,6 @@ function FlowBoard() {
   }, [setNodes]);
 
   // Обновление размера (только для демо-интерфейса)
-  const updateNodeSize = useCallback((nodeId: string, width: number, height: number) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === nodeId) {
-          return {
-            ...node,
-            style: { 
-              ...node.style, 
-              width, 
-              height 
-            },
-          };
-        }
-        return node;
-      })
-    );
-  }, [setNodes]);
 
   // Добавляем колбэки для демо-интерфейса
   const nodesWithCallbacks = useMemo(() => {
@@ -141,9 +128,6 @@ function FlowBoard() {
       
       const updatedData = {
         ...data,
-        onResize: (width: number, height: number) => {
-          updateNodeSize(node.id, width, height);
-        },
         onPinToggle: (isPinned: boolean) => {
           updateNodePin(node.id, isPinned);
         }
@@ -154,7 +138,7 @@ function FlowBoard() {
         data: updatedData as Record<string, unknown>,
       };
     });
-  }, [nodes, updateNodePin, updateNodeSize]);
+  }, [nodes, updateNodePin]);
 
   // Добавление нового виджета
   const addNewWidget = useCallback(() => {
