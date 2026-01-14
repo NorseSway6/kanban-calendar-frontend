@@ -15,7 +15,7 @@
     "@types/node": "^16.18.126",
     "@xyflow/react": "^12.10.0",
     "axios": "^1.13.2",
-    "calendar-module": "^1.1.3",
+    "calendar-module": "^1.2.0",
     "moment": "^2.30.1",
     "re-resizable": "^6.11.2",
     "react": "^19.2.1",

@@ -8,6 +8,7 @@ import TaskDetails from './components/TaskDetails';
 import ImportCalendar from './components/ImportCalendar';
 import StatService from './services/StatService';
 import { getCalendarConfig } from './config';
+import { useAppConfig } from './hooks/useAppConfig';
 
 // Кастомный Toolbar
 const CustomToolbar: React.FC<any> = ({ label, onNavigate }) => {
@@ -64,10 +65,12 @@ interface AppProps {
   widgetConfig?: any;
 }
 
+const config = useAppConfig();
+
 // Основной компонент App
 function App({ 
-  apiBaseUrl = getCalendarConfig().apiBaseUrl, // Значение по умолчанию из конфига
-  telegramBotUrl = getCalendarConfig().telegramBotUrl, // Значение по умолчанию из конфига
+  apiBaseUrl = config.apiBaseUrl,
+  telegramBotUrl = config.telegramBotUrl,
   initialEvents = [],
   onEventCreate,
   onEventDelete,
@@ -86,6 +89,8 @@ function App({
   const [showTaskDetails, setShowTaskDetails] = useState(false);
   const [lastMessageTime, setLastMessageTime] = useState<number>(0);
   
+   const { statsQueueMaxSize, platformApiUrl } = config;
+
   const statServiceRef = React.useRef<StatService | null>(null);
 
   const widgetId = widgetConfig?.widgetId || 0;

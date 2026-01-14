@@ -103,33 +103,37 @@ export interface CalendarNodeData {
  * @param widgetConfig - конфигурация виджета от платформы (приходит извне)
  * @returns данные для рендеринга виджета CalendarNode
  */
+// integration.ts - исправленная функция getInfo
 export const getInfo = (widgetConfig: WidgetConfig): CalendarNodeData => {
   if (!widgetConfig) {
     throw new Error('WidgetConfig is required');
   }
 
-  console.log('[getInfo] get config from platform:', {
+  console.log('🔧 [getInfo] Получен конфиг от платформы:', {
     widgetId: widgetConfig.widgetId,
     userId: widgetConfig.userId,
     nodeType: widgetConfig.config.type
   });
 
   const widgetData = widgetConfig.config.data || {};
-  const apiUrl = widgetData.apiBaseUrl || getCalendarConfig().platformApiUrl;
+  
+  // Берем apiBaseUrl из widgetData или используем значение по умолчанию
+  const apiUrl = widgetData.apiBaseUrl || 'http://localhost:8080/api';
+  const platformApiUrl = widgetData.platformApiUrl;
 
   // 1. Создаем колбэки для работы с событиями календаря
   const calendarCallbacks = createStandaloneCallbacks(apiUrl);
   
   // 2. Создаем платформенные функции
+  console.log('🛠️ [getInfo] Создаем платформенные функции для виджета:', widgetConfig.widgetId);
   const platformFunctions = createDefaultPlatformFunctions(widgetConfig);
-
+  
   // 3. Формируем данные для виджета
   const calendarNodeData: CalendarNodeData = {
     // Данные виджета из платформы
     label: widgetData.label || `Календарь ${widgetConfig.widgetId}`,
-    apiBaseUrl: widgetData.apiBaseUrl || 'http://localhost:8080/api',
-    platformApiUrl: widgetData.platformApiUrl,
-    telegramBotUrl: widgetData.telegramBotUrl,
+    apiBaseUrl: apiUrl,
+    platformApiUrl: platformApiUrl,
     isPinned: widgetData.isPinned || false,
     events: widgetData.events || [],
     currentView: widgetData.currentView || 'month',
@@ -144,13 +148,6 @@ export const getInfo = (widgetConfig: WidgetConfig): CalendarNodeData => {
     // Функции платформы
     ...platformFunctions
   };
-
-  console.log('[getInfo] created widget data:', {
-    widgetId: widgetConfig.widgetId,
-    hasSaveConfig: !!calendarNodeData.saveConfig,
-    hasSubscribe: !!calendarNodeData.subscribe,
-    hasWidgetConfig: !!calendarNodeData.widgetConfig
-  });
 
   return calendarNodeData;
 };

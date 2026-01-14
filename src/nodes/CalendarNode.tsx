@@ -34,7 +34,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
   const appDataRef = useRef<CalendarNodeData | null>(null);
   
   if (!appDataRef.current) {
-    console.log('🔧 [CalendarNode] getInfo called:', data.widgetConfig?.widgetId);
+    console.log('[CalendarNode] getInfo called:', data.widgetConfig?.widgetId);
     
     if (data.widgetConfig) {
       appDataRef.current = getInfo(data.widgetConfig);
@@ -237,7 +237,6 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
         padding: '4px'
       }}>
         <App 
-          apiBaseUrl={appData.apiBaseUrl}
           initialEvents={appData.events}
           onEventCreate={appData.onEventCreate}
           onEventDelete={appData.onEventDelete}

@@ -19,7 +19,7 @@ class StatService {
   
   // Храним последние события для отправки порциями
   private eventsQueue: StatEvent[] = [];
-  private readonly MAX_QUEUE_SIZE = getCalendarConfig().statsQueueMaxSize;
+  private readonly maxQueueSize = getCalendarConfig().statsQueueMaxSize;
   
   // Флаг, чтобы избежать множественной отправки
   private isSending: boolean = false;
@@ -37,7 +37,7 @@ class StatService {
     this.loadCountersFromStorage();
     
     // Проверяем, не накопилось ли достаточно событий при загрузке
-    if (this.eventsQueue.length >= this.MAX_QUEUE_SIZE) {
+    if (this.eventsQueue.length >= this.maxQueueSize) {
       setTimeout(() => this.flushQueue(), 1000);
     }
   }
@@ -63,7 +63,7 @@ class StatService {
     this.saveCountersToStorage();
     
     // Проверяем, достигли ли лимита
-    if (this.eventsQueue.length >= this.MAX_QUEUE_SIZE) {
+    if (this.eventsQueue.length >= this.maxQueueSize) {
       this.flushQueue();
     }
   }
@@ -162,7 +162,7 @@ class StatService {
     return {
       widgetId: this.widgetId,
       totalEvents: this.eventsQueue.length,
-      maxQueueSize: this.MAX_QUEUE_SIZE,
+      maxQueueSize: this.maxQueueSize,
       counters: Object.fromEntries(this.counters),
       lastEvent: this.eventsQueue[this.eventsQueue.length - 1]
     };

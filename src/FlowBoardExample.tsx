@@ -11,25 +11,19 @@ import {
 } from '@xyflow/react';
 import { useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-// import CalendarNode from './nodes/CalendarNode';
-// import { CalendarNodeData, WidgetConfig } from './integration/integration';
-// import { defaultBroadcastMessage } from './integration/defaultPlatform';
-// import { getCalendarConfig, initCalendarConfig } from './config';
 import { 
   CalendarNode, 
-  initCalendarConfig, 
   defaultBroadcastMessage,
   type WidgetConfig,
-  getCalendarConfig
 } from 'calendar-module';
 
-
-initCalendarConfig({
-  apiBaseUrl: 'http://localhost:8080/api', // Ваш тестовый бэкенд
-  telegramBotUrl: 'https://web.telegram.org/k/#@my_test_123456789t', // Тестовый бот
-  statsQueueMaxSize: 2,
-  platformApiUrl: 'http://localhost:3000' // Если тестируете интеграцию с платформой
-});
+// Конфигурация из переменных окружения (.env)
+const appConfig = {
+  apiBaseUrl: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api',
+  telegramBotUrl: process.env.REACT_APP_TELEGRAM_BOT_URL || 'https://web.telegram.org/k/#@my_test_1234567890_bo_bot',
+  statsQueueMaxSize: parseInt(process.env.REACT_APP_STATS_QUEUE_MAX_SIZE || '20', 10),
+  platformApiUrl: process.env.REACT_APP_PLATFORM_API_URL || 'http://localhost:3000',
+};
 
 // Создание демо-конфига виджета
 const createDemoWidgetConfig = (
@@ -48,14 +42,16 @@ const createDemoWidgetConfig = (
     dragHandle: 'dragHandle_custom',
     data: {
       label,
-      apiBaseUrl: getCalendarConfig().apiBaseUrl, // Используем из конфига
-      platformApiUrl: getCalendarConfig().platformApiUrl,
+      apiBaseUrl: appConfig.apiBaseUrl, // Используем из appConfig (.env)
+      platformApiUrl: appConfig.platformApiUrl,
+      telegramBotUrl: appConfig.telegramBotUrl,
+      statsQueueMaxSize: appConfig.statsQueueMaxSize,
       isPinned,
       events: [],
       currentView: 'month',
       currentDate: new Date().toISOString(),
       widgetType: 'calendar',
-      statsModuleToken: 'demo_token_123'
+      statsModuleToken: `demo_token_${widgetId}`
     },
     position: { x: 100, y: 100 },
     sourcePosition: Position.Right,
@@ -122,8 +118,6 @@ function FlowBoard() {
       })
     );
   }, [setNodes]);
-
-  // Обновление размера (только для демо-интерфейса)
 
   // Добавляем колбэки для демо-интерфейса
   const nodesWithCallbacks = useMemo(() => {
