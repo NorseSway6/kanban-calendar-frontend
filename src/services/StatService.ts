@@ -1,4 +1,5 @@
-import { calendarConfig } from '../config';
+import { getCalendarConfig } from '../config';
+
 // src/services/StatService.ts
 interface StatEvent {
   type: string;
@@ -18,7 +19,7 @@ class StatService {
   
   // Храним последние события для отправки порциями
   private eventsQueue: StatEvent[] = [];
-  private readonly MAX_QUEUE_SIZE = calendarConfig.statsQueueMaxSize;
+  private readonly MAX_QUEUE_SIZE = getCalendarConfig().statsQueueMaxSize;
   
   // Флаг, чтобы избежать множественной отправки
   private isSending: boolean = false;
@@ -61,11 +62,8 @@ class StatService {
     // Сохраняем в localStorage
     this.saveCountersToStorage();
     
-    console.log('📊 Событие зарегистрировано. Очередь:', this.eventsQueue.length);
-    
     // Проверяем, достигли ли лимита
     if (this.eventsQueue.length >= this.MAX_QUEUE_SIZE) {
-      console.log(`✅ Достигнут лимит очереди (${this.MAX_QUEUE_SIZE}), отправляю...`);
       this.flushQueue();
     }
   }
@@ -88,14 +86,10 @@ class StatService {
         lastUpdated: new Date().toISOString(),
         batchType: 'queue_limit_reached'
       };
-
-      console.log(`📤 Отправляю порцию из ${this.eventsQueue.length} событий:`, statsData);
-      console.log('✅ Отправлено на сервер статистики');
       
       // ЗАКОММЕНТИРОВАНО: реальная отправка
-      /*
       if (this.moduleToken) {
-        const response = await fetch('https://statservice.example.com/api/stats/module/metrics', {
+        const response = await fetch(`${getCalendarConfig().platformApiUrl}//stats/module/metrics`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -105,19 +99,18 @@ class StatService {
         });
         
         if (response.ok) {
-          console.log(`✅ Статистика отправлена (${this.eventsQueue.length} событий)`);
+          console.log(`Send stats`);
           this.eventsQueue = []; // Очищаем очередь после успешной отправки
           this.saveCountersToStorage(); // Сохраняем изменения
         }
       }
-      */
       
       // В демо-режиме просто очищаем очередь
       this.eventsQueue = [];
       this.saveCountersToStorage();
       
     } catch (error) {
-      console.error('❌ Ошибка отправки статистики:', error);
+      console.error('Sending stats error', error);
     } finally {
       this.isSending = false;
     }
@@ -126,7 +119,6 @@ class StatService {
   // Принудительная отправка (при закрытии страницы)
   forceFlush(): void {
     if (this.eventsQueue.length > 0) {
-      console.log(`🔄 Принудительная отправка ${this.eventsQueue.length} событий`);
       this.flushQueue();
     }
   }
@@ -142,7 +134,7 @@ class StatService {
       };
       localStorage.setItem(storageKey, JSON.stringify(data));
     } catch (error) {
-      console.warn('⚠️ Не удалось сохранить статистику:', error);
+      console.warn('Stats is not saved', error);
     }
   }
 
@@ -157,11 +149,11 @@ class StatService {
         this.eventsQueue = parsed.eventsQueue || [];
         
         if (this.eventsQueue.length > 0) {
-          console.log(`📂 Загружено ${this.eventsQueue.length} событий из localStorage`);
+          console.log(`Load ${this.eventsQueue.length} events from localStorage`);
         }
       }
     } catch (error) {
-      console.warn('⚠️ Не удалось загрузить статистику:', error);
+      console.warn('Stats is not loaded:', error);
     }
   }
 

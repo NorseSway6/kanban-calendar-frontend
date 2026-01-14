@@ -11,20 +11,24 @@ import {
 } from '@xyflow/react';
 import { useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+// import CalendarNode from './nodes/CalendarNode';
+// import { CalendarNodeData, WidgetConfig } from './integration/integration';
+// import { defaultBroadcastMessage } from './integration/defaultPlatform';
+// import { getCalendarConfig, initCalendarConfig } from './config';
 import { 
   CalendarNode, 
   initCalendarConfig, 
   defaultBroadcastMessage,
-  type CalendarNodeData,
-  type WidgetConfig, 
-  calendarConfig
+  type WidgetConfig,
+  getCalendarConfig
 } from 'calendar-module';
+
 
 initCalendarConfig({
   apiBaseUrl: 'http://localhost:8080/api', // Ваш тестовый бэкенд
-  telegramBotUrl: 'https://t.me/your_test_bot', // Тестовый бот
+  telegramBotUrl: 'https://web.telegram.org/k/#@my_test_123456789t', // Тестовый бот
   statsQueueMaxSize: 2,
-  platformApiUrl: 'http://localhost:3000/api' // Если тестируете интеграцию с платформой
+  platformApiUrl: 'http://localhost:3000' // Если тестируете интеграцию с платформой
 });
 
 // Создание демо-конфига виджета
@@ -44,8 +48,8 @@ const createDemoWidgetConfig = (
     dragHandle: 'dragHandle_custom',
     data: {
       label,
-      apiBaseUrl: calendarConfig.apiBaseUrl, // Используем из конфига
-      platformApiUrl: calendarConfig.platformApiUrl,
+      apiBaseUrl: getCalendarConfig().apiBaseUrl, // Используем из конфига
+      platformApiUrl: getCalendarConfig().platformApiUrl,
       isPinned,
       events: [],
       currentView: 'month',

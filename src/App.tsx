@@ -7,10 +7,7 @@ import './App.css';
 import TaskDetails from './components/TaskDetails';
 import ImportCalendar from './components/ImportCalendar';
 import StatService from './services/StatService';
-import { calendarConfig } from './config';
-
-const API_BASE_URL = calendarConfig.apiBaseUrl;
-const TELEGRAM_BOT_URL = calendarConfig.telegramBotUrl;
+import { getCalendarConfig } from './config';
 
 // Кастомный Toolbar
 const CustomToolbar: React.FC<any> = ({ label, onNavigate }) => {
@@ -58,6 +55,7 @@ const buttonStyle = {
 interface AppProps {
   apiBaseUrl?: string;
   initialEvents?: any[];
+  telegramBotUrl?: string;
   onEventCreate?: (event: any) => Promise<void>;
   onEventDelete?: (eventId: number) => Promise<void>;
   onEventUpdate?: (eventId: number, event: any) => Promise<void>;
@@ -68,7 +66,8 @@ interface AppProps {
 
 // Основной компонент App
 function App({ 
-  apiBaseUrl = API_BASE_URL,
+  apiBaseUrl = getCalendarConfig().apiBaseUrl, // Значение по умолчанию из конфига
+  telegramBotUrl = getCalendarConfig().telegramBotUrl, // Значение по умолчанию из конфига
   initialEvents = [],
   onEventCreate,
   onEventDelete,
@@ -116,7 +115,7 @@ function App({
   const trackEvent = useCallback((eventType: string, metadata?: Record<string, any>) => {
     if (statServiceRef.current) {
       statServiceRef.current.trackEvent(eventType, metadata);
-      console.log(`📊 Отслежено событие: ${eventType}`, metadata);
+      console.log(`Tracked event: ${eventType}`, metadata);
     }
   }, []);
 
@@ -130,7 +129,7 @@ function App({
 
         const response = await fetch(`${apiBaseUrl}/tasks`);
         
-        if (!response.ok) throw new Error('Ошибка загрузки данных');
+        if (!response.ok) throw new Error('Error data load');
         
         const data = await response.json();
         
@@ -192,7 +191,7 @@ function App({
         
         setEvents(formattedEvents);
       } catch (error) {
-        console.error('Ошибка загрузки событий:', error);
+        console.error('Error data load:', error);
         setEvents([]);
       } finally {
         setLoading(false);
@@ -205,7 +204,7 @@ function App({
 
   useEffect(() => {
     if (!subscribe) {
-      console.log('⚠️ App: subscribe не доступен');
+      console.log('App: subscribe not avialable');
       return;
     }
 
@@ -213,20 +212,19 @@ function App({
       const now = Date.now();
 
       setLastMessageTime(now);
-      console.log('📨 App получил сообщение:', message.type);
+      console.log('App get message:', message.type);
       
       // Обновляем календарь только для определенных типов сообщений
       if (['EVENT_CREATED', 'EVENT_UPDATED', 'EVENT_DELETED'].includes(message.type)) {
-        console.log('Обновляю календарь из-за:', message.type);
         fetchEvents();
       }
     };
 
     const unsubscribe = subscribe(messageHandler);
-    console.log('✅ App подписался на сообщения');
+    console.log('App subscride on message');
 
     return () => {
-      console.log('🗑️ App отписался от сообщений');
+      console.log('App unsubscribe on message');
       unsubscribe();
     };
   }, [subscribe, fetchEvents, lastMessageTime]); // Добавляем fetchEvents в зависимости
@@ -235,19 +233,18 @@ function App({
   const handleTaskSubmit = async (taskData: TaskData) => {
     try {
       if (!onEventCreate) {
-        throw new Error('Функция onEventCreate не предоставлена платформой');
+        throw new Error('Function onEventCreate not provided');
       }
       
-      console.log('🔄 Используем колбэк onEventCreate:', taskData);
       await onEventCreate(taskData);
       
       await fetchEvents();
       setShowTaskForm(false);
       setSelectedDate(undefined);
       
-      console.log('Задача успешно создана и отображена');
+      console.log('Create task successfully');
     } catch (error) {
-      console.error('❌ Ошибка создания задачи:', error);
+      console.error('Creation task error:', error);
       alert('Не удалось создать задачу. Проверьте консоль для подробностей.');
     }
   };
@@ -255,18 +252,17 @@ function App({
   const handleDeleteTask = async (taskId: number) => {
     try {
       if (!onEventDelete) {
-        throw new Error('Функция onEventDelete не предоставлена платформой');
+        throw new Error('Function onEventDelete not provided');
       }
       
-      console.log('🔄 Используем колбэк onEventDelete:', taskId);
       await onEventDelete(taskId);
       
       await fetchEvents();
       setShowTaskDetails(false);
       
-      console.log('Задача успешно удалена');
+      console.log('Delete task successfully');
     } catch (error) {
-      console.error('❌ Ошибка удаления задачи:', error);
+      console.error('Deletion task error:', error);
       alert('Не удалось удалить задачу');
     }
   };
@@ -274,23 +270,22 @@ function App({
   const handleUpdateTask = async (taskId: number, updatedData: TaskData) => {
     try {
       if (!onEventUpdate) {
-        throw new Error('Функция onEventUpdate не предоставлена платформой');
+        throw new Error('Function onEventUpdate not provided');
       }
       
-      console.log('🔄 Используем колбэк onEventUpdate:', taskId, updatedData);
       await onEventUpdate(taskId, updatedData);
       
       await fetchEvents();
       
-      console.log('Задача успешно обновлена');
+      console.log('Update tasks successfully');
     } catch (error) {
-      console.error('❌ Ошибка обновления задачи:', error);
+      console.error('Updating task error:', error);
       alert('Не удалось обновить задачу');
     }
   };
 
   const handleImportSuccess = useCallback((importedCount: number) => {
-    console.log('Импорт календаря успешен, обновляю события...');
+    console.log('Import successfully');
     fetchEvents();
     
     // Отслеживаем событие импорта
@@ -303,7 +298,7 @@ function App({
   }, [fetchEvents, trackEvent]);
 
   const handleImportError = useCallback((error: string) => {
-    console.error('Ошибка импорта календаря:', error);
+    console.error('Importing error:', error);
     alert(`Ошибка импорта: ${error}`);
     
     // Отслеживаем ошибку импорта
@@ -316,7 +311,7 @@ function App({
       display: 'flex', 
       height: '100%', 
       backgroundColor: '#f8f9fa',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      fontFamily: 'Helvetica, sans-serif'
     }}>
       {/* Боковая панель */}
       <div className='sidebar'>
@@ -391,14 +386,14 @@ function App({
                     />
                   </div>
                 <a
-                  href={TELEGRAM_BOT_URL}
+                  href={telegramBotUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="telegram-button"
                   onClick={(e) => {
                     // Отслеживаем клик
                     trackEvent('TELEGRAM_CLICK', {
-                      url: TELEGRAM_BOT_URL,
+                      url: telegramBotUrl,
                       timestamp: new Date().toISOString()
                     });
                   }}
@@ -406,7 +401,7 @@ function App({
                   <svg width="35" height="35" viewBox="0 0 25 25" fill="currentColor">
                     <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.157l-1.895 8.863c-.127.585-.465.731-.942.455l-2.605-1.92-1.258 1.213c-.139.139-.256.256-.525.256l.188-2.665 4.838-4.37c.211-.188-.046-.292-.327-.104l-5.984 3.77-2.584-.805c-.564-.176-.576-.564.117-.844l10.1-3.883c.47-.176.882.104.728.844z"/>
                   </svg>
-                  Напомнить о дедлайне
+                  <div style={{fontFamily: 'Helvetica, sans-serif'}}> Напомнить о дедлайне</div>
                 </a>
               </div>
       </div>

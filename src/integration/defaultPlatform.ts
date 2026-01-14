@@ -47,7 +47,6 @@ export const defaultSaveConfig = async (
   widgetConfig: WidgetConfig,
   nodeUpdates: FlowNodeUpdate
 ): Promise<void> => {
-  console.log('💾 [Default] Сохраняем конфиг для виджета', widgetConfig.widgetId, nodeUpdates);
   
   // 1. Создаем обновленную ноду (глубокое слияние)
   const updatedNode: FlowNode = {
@@ -85,39 +84,37 @@ export const defaultSaveConfig = async (
   const platformApiUrl = widgetConfig.config.data?.platformApiUrl;
   
   if (platformApiUrl) {
-    console.log(`📤 Отправляем конфиг на платформу: ${platformApiUrl}/widget/${widgetConfig.widgetId}`);
-    
-    // try {
-    //   const response = await fetch(`${platformApiUrl}/widget/${widgetConfig.widgetId}`, {
-    //     method: 'PUT',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({
-    //       config: updatedNode,  // Отправляем всю ноду
-    //       board: widgetConfig.board,
-    //       userId: widgetConfig.userId,
-    //       role: widgetConfig.role
-    //     }),
-    //   });
-
-    //   if (!response.ok) {
-    //     const errorText = await response.text();
-    //     throw new Error(`Ошибка сохранения конфига: ${response.status} ${errorText}`);
-    //   }
-      
-    //   console.log('✅ Конфиг успешно отправлен на платформу');
-    // } catch (error) {
-    //   console.error('❌ Ошибка отправки ноды на платформу:', error);
-    //   // Не бросаем ошибку дальше, чтобы не ломать UX
-    //   // В реальной платформе здесь должна быть обработка ошибок
-    //   console.log('⚠️ Продолжаем работу в offline режиме');
-    // }
+    // Используем fetch без await - запрос выполняется в фоне
+    fetch(`${platformApiUrl}/widget/${widgetConfig.widgetId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        config: updatedNode,
+        board: widgetConfig.board,
+        userId: widgetConfig.userId,
+        role: widgetConfig.role
+      }),
+    })
+    .then(response => {
+      if (!response.ok) {
+        // Получаем текст ошибки асинхронно
+        return response.text().then(errorText => {
+          throw new Error(`Error ${response.status}: ${errorText}`);
+        });
+      }
+      console.log('Config save and send on platform');
+      return response.json();
+    })
+    .then(data => {})
+    .catch(error => {
+      console.error('Error sending sonfig', error.message);
+  });
   } else {
-    console.log('🔄 Конфиг сохранен локально (platformApiUrl не указан)');
+    console.log('Config save in local storage');
   }
 
   // 5. Отправляем системные сообщения о изменениях
   if (nodeUpdates.position) {
-    console.log('📍 Отправляем POSITION_UPDATED для виджета:', widgetConfig.widgetId);
     defaultBroadcastMessage({
       type: 'POSITION_UPDATED',
       widgetId: widgetConfig.widgetId,
@@ -127,7 +124,6 @@ export const defaultSaveConfig = async (
   }
   
   if (nodeUpdates.data?.isPinned !== undefined) {
-    console.log('📌 Отправляем WIDGET_PINNED для виджета:', widgetConfig.widgetId);
     defaultBroadcastMessage({
       type: 'WIDGET_PINNED',
       widgetId: widgetConfig.widgetId,
@@ -155,12 +151,12 @@ export const defaultBroadcastMessage = (message: any) => {
 
 // Дефолтный обработчик изменения размера
 export const defaultOnResize = (width: number, height: number) => {
-  console.log('📏 [Default] Изменение размера:', { width, height });
+  console.log('[Defaultplatform] size updating:', { width, height });
 };
 
 // Дефолтный обработчик изменения состояния закрепления
 export const defaultOnPinToggle = (isPinned: boolean) => {
-  console.log('📌 [Default] Изменение закрепления:', isPinned);
+  console.log('[Defaultplatfor] pin updateing:', isPinned);
 };
 
 /**
@@ -173,9 +169,9 @@ export const createDefaultPlatformFunctions = (widgetConfig: WidgetConfig) => {
     try {
       // Сохраняем в дефолтную систему
       await defaultSaveConfig(widgetConfig, nodeUpdates);
-      console.log('✅ Конфиг обновлен локально и отправлен на платформу');
+      console.log('Config save in localStorage and send on platform');
     } catch (error) {
-      console.error('❌ Ошибка сохранения конфига:', error);
+      console.error('Save config error:', error);
       throw error;
     }
   };

@@ -2,7 +2,6 @@
 export const createStandaloneCallbacks = (apiBaseUrl: string) => {
   return {
     onEventCreate: async (event: any) => {
-      console.log('📤 [Standalone] Создаем задачу:', event);
       
       const taskRequest: any = {
         title: event.title,
@@ -24,22 +23,20 @@ export const createStandaloneCallbacks = (apiBaseUrl: string) => {
         body: JSON.stringify(taskRequest),
       });
 
-      if (!response.ok) throw new Error('Ошибка создания задачи');
+      if (!response.ok) throw new Error('[Standalone] Create task error');
       return await response.json();
     },
     
     onEventDelete: async (eventId: number) => {
-      console.log('🗑️ [Standalone] Удаляем задачу:', eventId);
       
       const response = await fetch(`${apiBaseUrl}/tasks/${eventId}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Ошибка удаления задачи');
+      if (!response.ok) throw new Error('[Standalone] Delete task error');
     },
     
     onEventUpdate: async (eventId: number, event: any) => {
-      console.log('✏️ [Standalone] Обновляем задачу:', eventId, event);
       
       const taskRequest: any = {
         title: event.title,
@@ -64,7 +61,7 @@ export const createStandaloneCallbacks = (apiBaseUrl: string) => {
         body: JSON.stringify(taskRequest),
       });
 
-      if (!response.ok) throw new Error('Ошибка обновления задачи');
+      if (!response.ok) throw new Error('Update task error');
       return await response.json();
     }
   };

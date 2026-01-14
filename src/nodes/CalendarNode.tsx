@@ -34,7 +34,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
   const appDataRef = useRef<CalendarNodeData | null>(null);
   
   if (!appDataRef.current) {
-    console.log('🔧 [CalendarNode] getInfo вызывается при создании виджета:', data.widgetConfig?.widgetId);
+    console.log('🔧 [CalendarNode] getInfo called:', data.widgetConfig?.widgetId);
     
     if (data.widgetConfig) {
       appDataRef.current = getInfo(data.widgetConfig);
@@ -74,15 +74,8 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
 
   // Функция сохранения позиции
   const savePosition = useCallback(async (newPosition: { x: number; y: number }) => {
-    if (isPinned) {
-      console.log('⚠️ Виджет закреплен, позиция не сохраняется');
-      return;
-    }
-
-    console.log('📍 CalendarNode сохраняет позицию:', id, newPosition);
-    
     if (!appData.saveConfig) {
-      console.error('❌ saveConfig не доступен в appData');
+      console.error('saveConfig not avialable to appData');
       return;
     }
 
@@ -93,9 +86,9 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
       };
 
       await appData.saveConfig({nodeUpdates});
-      console.log('✅ Позиция сохранена');
+      console.log('Position save successfully');
     } catch (error) {
-      console.error('❌ Ошибка сохранения позиции:', error);
+      console.error('Saving position error', error);
     } finally {
       setIsSaving(false);
     }
@@ -120,10 +113,9 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
 
   const togglePin = useCallback(async () => {
     const newPinnedState = !isPinned;
-    console.log('📌 Изменение закрепления:', newPinnedState);
     
     if (!appData.saveConfig) {
-      console.error('❌ saveConfig не доступен');
+      console.error('saveConfig not avialable');
       return;
     }
 
@@ -134,14 +126,14 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
       };
 
       await appData.saveConfig({nodeUpdates});
-      console.log('✅ Состояние закрепления сохранено');
+      console.log('Widget is pinned');
       setIsPinned(newPinnedState);
       
       if (data.onPinToggle) {
         data.onPinToggle(newPinnedState);
       }
     } catch (error) {
-      console.error('❌ Ошибка сохранения закрепления:', error);
+      console.error('saving pinned error:', error);
     } finally {
       setIsSaving(false);
     }
@@ -149,7 +141,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
 
   const handleResize = useCallback(async (event: any, params: any) => {
     if (!appData.saveConfig) {
-      console.error('❌ saveConfig не доступен');
+      console.error('saveConfig is not avialable');
       return;
     }
 
@@ -161,13 +153,13 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
       };
 
       await appData.saveConfig({nodeUpdates});
-      console.log('✅ Размер сохранен');
+      console.log('Size is saving');
       
       if (data.onResize) {
         data.onResize(params.width, params.height);
       }
     } catch (error) {
-      console.error('❌ Ошибка сохранения размера:', error);
+      console.error('Saving size error:', error);
     } finally {
       setIsSaving(false);
       updateNodeInternals(id);
@@ -211,7 +203,7 @@ const CalendarNode: React.FC<CalendarNodeProps> = ({
         
         <div className="flex items-center gap-4">
           <span className="text-sm font-bold text-gray-800">
-            📅 {appData.label || 'Календарь'}
+            📅 {'Календарь'}
           </span>
           <button
             onClick={togglePin}

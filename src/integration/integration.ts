@@ -2,7 +2,7 @@
 import { createStandaloneCallbacks } from './standalone';
 import { createDefaultPlatformFunctions } from './defaultPlatform';
 import { Position } from '@xyflow/react';
-import { calendarConfig } from '../config';
+import { getCalendarConfig } from '../config';
 
 export interface FlowNodeStyle {
   display?: string;
@@ -108,28 +108,20 @@ export const getInfo = (widgetConfig: WidgetConfig): CalendarNodeData => {
     throw new Error('WidgetConfig is required');
   }
 
-  console.log('🔧 [getInfo] Получен конфиг от платформы:', {
+  console.log('[getInfo] get config from platform:', {
     widgetId: widgetConfig.widgetId,
     userId: widgetConfig.userId,
     nodeType: widgetConfig.config.type
   });
 
   const widgetData = widgetConfig.config.data || {};
-  const apiUrl = widgetData.apiBaseUrl || calendarConfig.platformApiUrl;
+  const apiUrl = widgetData.apiBaseUrl || getCalendarConfig().platformApiUrl;
 
   // 1. Создаем колбэки для работы с событиями календаря
   const calendarCallbacks = createStandaloneCallbacks(apiUrl);
   
   // 2. Создаем платформенные функции
-  console.log('🛠️ [getInfo] Создаем платформенные функции для виджета:', widgetConfig.widgetId);
   const platformFunctions = createDefaultPlatformFunctions(widgetConfig);
-  
-  // Логируем, какие функции созданы
-  console.log('📋 [getInfo] Созданные функции:', {
-    hasSaveConfig: !!platformFunctions.saveConfig,
-    hasSubscribe: !!platformFunctions.subscribe,
-    hasSendMessage: !!platformFunctions.sendMessage
-  });
 
   // 3. Формируем данные для виджета
   const calendarNodeData: CalendarNodeData = {
@@ -137,6 +129,7 @@ export const getInfo = (widgetConfig: WidgetConfig): CalendarNodeData => {
     label: widgetData.label || `Календарь ${widgetConfig.widgetId}`,
     apiBaseUrl: widgetData.apiBaseUrl || 'http://localhost:8080/api',
     platformApiUrl: widgetData.platformApiUrl,
+    telegramBotUrl: widgetData.telegramBotUrl,
     isPinned: widgetData.isPinned || false,
     events: widgetData.events || [],
     currentView: widgetData.currentView || 'month',
@@ -152,7 +145,7 @@ export const getInfo = (widgetConfig: WidgetConfig): CalendarNodeData => {
     ...platformFunctions
   };
 
-  console.log('✅ [getInfo] Созданы данные для виджета:', {
+  console.log('[getInfo] created widget data:', {
     widgetId: widgetConfig.widgetId,
     hasSaveConfig: !!calendarNodeData.saveConfig,
     hasSubscribe: !!calendarNodeData.subscribe,

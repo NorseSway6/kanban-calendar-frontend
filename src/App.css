@@ -3,7 +3,7 @@
   display: flex;
   height: 100vh;
   background-color: #f8f9fa;
-  font-family: 'system-ui, -apple-system, sans-serif';
+  font-family: Helvetica, sans-serif !important;
 }
 
 /* Боковая панель */
@@ -162,7 +162,7 @@
   box-shadow: 0 0 13px 7px rgba(47, 47, 47, 0.1);
   cursor: pointer;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
   margin-top: auto;
   text-decoration: none;
   text-align: right;
